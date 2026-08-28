@@ -1,0 +1,224 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+  NUGET_XMLDOC_MODE: skip
+
+jobs:
+  verify:
+    name: Verify release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate version tag
+        id: version
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tags must use the form v1.2.3."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA^{commit}" origin/master; then
+            echo "The tagged commit is not on master."
+            exit 1
+          fi
+
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.Release.lock.json"
+
+      - name: Restore
+        run: >-
+          dotnet restore Tests/Inlay.Tests.csproj
+          --locked-mode
+          -p:Configuration=Release
+
+      - name: Build
+        run: >-
+          dotnet build Tests/Inlay.Tests.csproj
+          --configuration Release
+          --no-restore
+          -p:TreatWarningsAsErrors=true
+
+      - name: Test
+        run: >-
+          dotnet test Tests/Inlay.Tests.csproj
+          --configuration Release
+          --no-build
+          --no-restore
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory TestResults
+
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: test-results-release
+          path: TestResults/*.trx
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish (${{ matrix.rid }})
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-x64
+          - os: macos-latest
+            rid: osx-arm64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.Release.lock.json"
+
+      - name: Restore release dependencies
+        run: >-
+          dotnet restore Inlay.csproj
+          --locked-mode
+          -p:Configuration=Release
+
+      - name: Publish single file
+        run: >-
+          dotnet publish Inlay.csproj
+          --configuration Release
+          --no-restore
+          --runtime ${{ matrix.rid }}
+          --output artifacts/publish/${{ matrix.rid }}
+          -p:PublishProfile=SingleFile
+          -p:Version=${{ needs.verify.outputs.version }}
+
+      - name: Verify Windows single-file output
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem "artifacts/publish/${{ matrix.rid }}" -File)
+          $executables = @($files | Where-Object Name -eq "Inlay.exe")
+          $unexpected = @($files | Where-Object { $_.Name -ne "Inlay.exe" -and $_.Extension -ne ".pdb" })
+          if ($executables.Count -ne 1 -or $unexpected.Count -ne 0) {
+            Write-Error "Expected Inlay.exe and optional native PDBs, found: $($files.Name -join ', ')"
+            exit 1
+          }
+
+      - name: Verify Unix single-file output
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          set -- "artifacts/publish/${{ matrix.rid }}"/*
+          if [[ $# -ne 1 || ! -f "$1" || "$(basename "$1")" != "Inlay" ]]; then
+            echo "Expected one file named Inlay."
+            find "artifacts/publish/${{ matrix.rid }}" -maxdepth 1 -type f -print
+            exit 1
+          fi
+
+      - name: Package Windows executable
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/packages | Out-Null
+          $archive = "artifacts/packages/Inlay-${{ needs.verify.outputs.version }}-${{ matrix.rid }}.zip"
+          Compress-Archive -Path "artifacts/publish/${{ matrix.rid }}/Inlay.exe" -DestinationPath $archive
+
+      - name: Package Unix executable
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/packages
+          tar -C "artifacts/publish/${{ matrix.rid }}" -czf \
+            "artifacts/packages/Inlay-${{ needs.verify.outputs.version }}-${{ matrix.rid }}.tar.gz" \
+            Inlay
+
+      - name: Upload release asset
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: release-${{ matrix.rid }}
+          path: artifacts/packages/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Create GitHub release
+    needs:
+      - verify
+      - publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: release-*
+          path: artifacts/release
+          merge-multiple: true
+
+      - name: Create checksums
+        shell: bash
+        run: |
+          cd artifacts/release
+          sha256sum Inlay-* > SHA256SUMS.txt
+
+      - name: Create or update draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            if [[ "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" != "true" ]]; then
+              echo "A published release already exists for $GITHUB_REF_NAME."
+              exit 1
+            fi
+
+            gh release upload "$GITHUB_REF_NAME" artifacts/release/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              artifacts/release/* \
+              --verify-tag \
+              --generate-notes \
+              --draft \
+              --title "Inlay ${{ needs.verify.outputs.version }}"
+          fi
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false

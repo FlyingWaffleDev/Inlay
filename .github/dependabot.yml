@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      avalonia:
+        patterns:
+          - "Avalonia*"
+          - "ReactiveUI.Avalonia"
+      test-packages:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
+          - "Avalonia.Headless.XUnit"
+          - "xunit*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

@@ -32,15 +32,9 @@
         "Release",
         "--force",
         "--use-current-runtime",
-        "--self-contained",
-        "true",
         "--output",
         "${workspaceFolder}/artifacts/release",
-        "--property:Configuration=Release",
-        "--property:PublishSingleFile=true",
-        "--property:IncludeNativeLibrariesForSelfExtract=true",
-        "--property:DebugType=None",
-        "--property:DebugSymbols=false"
+        "--property:PublishProfile=SingleFile"
       ],
       "problemMatcher": "$msCompile",
       "presentation": {
@@ -54,7 +48,7 @@
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Inlay.Tests/Inlay.Tests.csproj"
+        "${workspaceFolder}/Tests/Inlay.Tests.csproj"
       ],
       "problemMatcher": "$msCompile",
       "group": "test",
