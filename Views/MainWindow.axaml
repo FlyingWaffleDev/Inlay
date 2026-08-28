@@ -181,7 +181,7 @@
                 AutomationProperties.Name="Line Length Limits">
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft">
-              <Border Padding="16" MinWidth="320">
+              <Border Padding="4" MinWidth="220">
                 <StackPanel Spacing="12">
                   <TextBlock Text="Line Length Limits" FontWeight="SemiBold" />
                   <StackPanel Orientation="Horizontal" Spacing="16">
