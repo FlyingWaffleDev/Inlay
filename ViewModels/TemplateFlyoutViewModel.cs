@@ -9,7 +9,7 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
 {
     private readonly Action<string> _selectOption;
     private readonly Action _removeTemplate;
-    private int _selectedIndex;
+    private string? _selectedChoice;
 
     [Reactive(nameof(CanAddChoice))]
     private string _newChoice = string.Empty;
@@ -21,7 +21,9 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
         Action removeTemplate)
     {
         Options = options;
-        _selectedIndex = selectedIndex;
+        _selectedChoice = selectedIndex >= 0 && selectedIndex < options.Count
+            ? options[selectedIndex]
+            : null;
         _selectOption = selectOption;
         _removeTemplate = removeTemplate;
         Options.CollectionChanged += OnOptionsChanged;
@@ -31,22 +33,41 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
     public bool HasOptions => Options.Count > 0;
     public bool CanAddChoice => NewChoice.Trim().Length > 0 && !Options.Contains(NewChoice.Trim());
 
-    public int SelectedIndex
+    public string? SelectedChoice
     {
-        get => _selectedIndex;
+        get => _selectedChoice;
         set
         {
-            if (_selectedIndex == value)
+            if (_selectedChoice == value)
             {
                 return;
             }
 
-            this.RaiseAndSetIfChanged(ref _selectedIndex, value);
-            var selectedText = value >= 0 && value < Options.Count
-                ? Options[value]
-                : TemplateTextElement.PlaceholderText;
-            _selectOption(selectedText);
+            this.RaiseAndSetIfChanged(ref _selectedChoice, value);
+            this.RaisePropertyChanged(nameof(SelectedIndex));
+            _selectOption(value ?? TemplateTextElement.PlaceholderText);
         }
+    }
+
+    public int SelectedIndex
+    {
+        get => _selectedChoice is null ? -1 : Options.IndexOf(_selectedChoice);
+        set => SelectedChoice = value >= 0 && value < Options.Count ? Options[value] : null;
+    }
+
+    internal void SynchronizeSelectedIndex(int selectedIndex)
+    {
+        var selectedChoice = selectedIndex >= 0 && selectedIndex < Options.Count
+            ? Options[selectedIndex]
+            : null;
+        if (_selectedChoice == selectedChoice)
+        {
+            this.RaisePropertyChanged(nameof(SelectedIndex));
+            return;
+        }
+
+        this.RaiseAndSetIfChanged(ref _selectedChoice, selectedChoice, nameof(SelectedChoice));
+        this.RaisePropertyChanged(nameof(SelectedIndex));
     }
 
     [ReactiveCommand]
@@ -72,16 +93,6 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
         }
 
         Options.RemoveAt(removedIndex);
-        if (removedIndex == SelectedIndex)
-        {
-            SelectedIndex = -1;
-        }
-        else if (removedIndex < SelectedIndex)
-        {
-            _selectedIndex--;
-            this.RaisePropertyChanged(nameof(SelectedIndex));
-            _selectOption(Options[_selectedIndex]);
-        }
     }
 
     [ReactiveCommand]
@@ -89,6 +100,16 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
 
     private void OnOptionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_selectedChoice is not null && !Options.Contains(_selectedChoice))
+        {
+            SelectedChoice = null;
+        }
+        else if (_selectedChoice is not null)
+        {
+            this.RaisePropertyChanged(nameof(SelectedIndex));
+            _selectOption(_selectedChoice);
+        }
+
         this.RaisePropertyChanged(nameof(HasOptions));
         this.RaisePropertyChanged(nameof(CanAddChoice));
     }
