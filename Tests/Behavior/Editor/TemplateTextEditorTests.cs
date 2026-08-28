@@ -1,5 +1,6 @@
 using Avalonia.Headless.XUnit;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using AvaloniaEdit.Rendering;
 using Inlay.Controls;
 using Inlay.Models;
@@ -132,6 +133,47 @@ public sealed class TemplateTextEditorTests
                 editor);
 
             Assert.True(textView.MinWidth <= availableWidth);
+            Assert.NotNull(textOrigin);
+            Assert.True(textOrigin.Value.X >= marginWidth);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void AWindowNarrowerThanTheHardLimitDoesNotChangeTheWrapColumn()
+    {
+        var editor = new TemplateTextEditor
+        {
+            ShowLineNumbers = true,
+            ShowLineLengthIndicators = true,
+            EnforceHardLineLengthLimit = true,
+            ViewportWordWrap = true,
+            SoftLineLengthLimit = 30,
+            HardLineLengthLimit = 40,
+            Text = new string('x', 50)
+        };
+        var window = new Window { Width = 240, Height = 300, Content = editor };
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            var textView = editor.TextArea.TextView;
+            var expectedWidth = 40 * textView.WideSpaceWidth;
+            var marginWidth = editor.TextArea.LeftMargins.Sum(
+                margin => margin.DesiredSize.Width);
+            var textOrigin = Avalonia.VisualExtensions.TranslatePoint(
+                textView,
+                default,
+                editor);
+
+            Assert.Equal(expectedWidth, textView.MinWidth);
+            Assert.Equal(expectedWidth, textView.MaxWidth);
+            Assert.True(editor.WordWrap);
+            Assert.Equal(ScrollBarVisibility.Disabled, editor.HorizontalScrollBarVisibility);
+            Assert.Equal(2, GetVisualRowCount(editor, window));
             Assert.NotNull(textOrigin);
             Assert.True(textOrigin.Value.X >= marginWidth);
         }

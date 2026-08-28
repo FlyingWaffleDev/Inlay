@@ -193,15 +193,26 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
     private void UpdateWordWrapping()
     {
         var hardLimitWidth = HardLineLengthLimit * TextArea.TextView.WideSpaceWidth;
-        var availableWidth = TextArea.Bounds.Width -
-            TextArea.LeftMargins.Sum(margin => margin.DesiredSize.Width);
+        var marginWidth = TextArea.LeftMargins.Sum(margin => margin.DesiredSize.Width);
+        var availableWidth = TextArea.Bounds.Width - marginWidth;
         WordWrap = ViewportWordWrap || EnforceHardLineLengthLimit;
+        HorizontalScrollBarVisibility = !EnforceHardLineLengthLimit && !ViewportWordWrap
+            ? ScrollBarVisibility.Auto
+            : ScrollBarVisibility.Disabled;
+        TextArea.Width = EnforceHardLineLengthLimit
+            ? hardLimitWidth + marginWidth
+            : double.NaN;
+        TextArea.HorizontalAlignment = EnforceHardLineLengthLimit
+            ? Avalonia.Layout.HorizontalAlignment.Left
+            : Avalonia.Layout.HorizontalAlignment.Stretch;
         TextArea.TextView.HorizontalAlignment = EnforceHardLineLengthLimit
             ? Avalonia.Layout.HorizontalAlignment.Left
             : Avalonia.Layout.HorizontalAlignment.Stretch;
-        TextArea.TextView.MinWidth = ShowLineLengthIndicators
-            ? Math.Min(hardLimitWidth, Math.Max(0, availableWidth))
-            : 0;
+        TextArea.TextView.MinWidth = EnforceHardLineLengthLimit
+            ? hardLimitWidth
+            : ShowLineLengthIndicators
+                ? Math.Min(hardLimitWidth, Math.Max(0, availableWidth))
+                : 0;
         TextArea.TextView.MaxWidth = EnforceHardLineLengthLimit
             ? hardLimitWidth
             : double.PositiveInfinity;
