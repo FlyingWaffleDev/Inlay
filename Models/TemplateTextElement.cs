@@ -32,6 +32,7 @@ internal sealed class TemplateTextElement : VisualLineText
     internal Point FlyoutPosition => _flyoutAnchorRectangle.TopLeft;
     internal Rect FlyoutAnchorRectangle => _flyoutAnchorRectangle;
     internal PlacementMode FlyoutPlacement => _flyout.Placement;
+    internal bool IsFlyoutOpen => _flyout.IsOpen;
 
     public event Action<TemplateTextElement>? Removed;
     public event Action<TemplateTextElement, string>? OptionSelected;
@@ -120,6 +121,11 @@ internal sealed class TemplateTextElement : VisualLineText
         };
     }
 
+    internal void SynchronizeSelectedIndex(int selectedIndex) =>
+        _viewModel.SynchronizeSelectedIndex(selectedIndex);
+
+    internal void CloseFlyout() => _flyout.Hide();
+
     private Flyout CreateFlyout()
     {
         var view = new TemplateFlyoutView { DataContext = _viewModel };
@@ -128,7 +134,7 @@ internal sealed class TemplateTextElement : VisualLineText
 
     internal void Remove()
     {
-        _flyout.Hide();
+        CloseFlyout();
         Removed?.Invoke(this);
     }
 }
