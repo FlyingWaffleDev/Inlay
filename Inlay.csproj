@@ -11,7 +11,8 @@
     <PackageId>Inlay</PackageId>
     <Product>Inlay</Product>
     <ApplicationTitle>Inlay</ApplicationTitle>
-    <Description>JSON text editor with inline template choices.</Description>
+    <Description>A small templating text editor built on AvaloniaEdit/AvaloniaUI.</Description>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>

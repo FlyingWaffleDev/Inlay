@@ -37,3 +37,8 @@ Files use JSON. Text and templates are stored as ordered parts, so template loca
 ```
 
 `selectedIndex` is `-1` when the template has no active choice. The editor displays `_____` in that case.
+
+
+## License
+
+Inlay is licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE) for details.
