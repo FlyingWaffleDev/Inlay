@@ -9,11 +9,6 @@
     <RootNamespace>Inlay.Tests</RootNamespace>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <NuGetLockFilePath>packages.Release.lock.json</NuGetLockFilePath>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageReference Include="Avalonia.Headless.XUnit" Version="12.1.1" />
