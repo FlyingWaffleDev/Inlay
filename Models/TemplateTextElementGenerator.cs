@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using AvaloniaEdit;
@@ -12,6 +13,7 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 {
     private readonly TextEditor _editor;
     private readonly List<TemplateInfo> _templates = [];
+    private bool _isReplayingOptionChange;
 
     public event Action? TemplatesChanged;
 
@@ -101,6 +103,7 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
             info.Options,
             info.SelectedIndex,
             _editor.TextArea.TextView);
+        RegisterElement(info, element);
         element.Removed += RemoveTemplate;
         element.OptionSelected += SelectOption;
         return element;
@@ -120,7 +123,7 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
             Length = text.Length,
             SelectedIndex = selectedIndex
         };
-        observableOptions.CollectionChanged += (_, _) => OnOptionsChanged(info);
+        observableOptions.CollectionChanged += (_, e) => OnOptionsChanged(info, e);
         return info;
     }
 
@@ -159,6 +162,11 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 
     private void SelectOption(TemplateTextElement element, string option)
     {
+        if (_isReplayingOptionChange)
+        {
+            return;
+        }
+
         var info = _templates.FirstOrDefault(template => template.Anchor == element.Anchor);
         if (info is null || info.Anchor.Offset < 0)
         {
@@ -185,8 +193,31 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         NotifyChanged();
     }
 
-    private void OnOptionsChanged(TemplateInfo info)
+    private void OnOptionsChanged(TemplateInfo info, NotifyCollectionChangedEventArgs e)
     {
+        if (_isReplayingOptionChange)
+        {
+            return;
+        }
+
+        if (e.Action == NotifyCollectionChangedAction.Add &&
+            e.NewStartingIndex >= 0 &&
+            e.NewItems?.Count == 1 &&
+            e.NewItems[0] is string addedOption)
+        {
+            RecordOptionAddition(info, addedOption, e.NewStartingIndex);
+            return;
+        }
+
+        if (e.Action == NotifyCollectionChangedAction.Remove &&
+            e.OldStartingIndex >= 0 &&
+            e.OldItems?.Count == 1 &&
+            e.OldItems[0] is string removedOption)
+        {
+            RecordOptionRemoval(info, removedOption, e.OldStartingIndex);
+            return;
+        }
+
         if (info.SelectedIndex >= info.Options.Count)
         {
             SelectByMetadata(info, TemplateTextElement.PlaceholderText, -1);
@@ -195,6 +226,63 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         {
             NotifyChanged();
         }
+    }
+
+    private void RecordOptionAddition(TemplateInfo info, string option, int addedIndex)
+    {
+        var oldIndex = info.SelectedIndex;
+        var newIndex = oldIndex >= addedIndex && oldIndex >= 0 ? oldIndex + 1 : oldIndex;
+
+        RunUndoGroup(() =>
+        {
+            _editor.Document.UndoStack.Push(new TemplateOptionCollectionOperation(
+                this,
+                info,
+                option,
+                addedIndex,
+                info.SelectedText,
+                oldIndex,
+                info.SelectedText,
+                newIndex,
+                addOnRedo: true));
+            ApplySelectionMetadata(info, info.SelectedText, newIndex);
+        });
+
+        NotifyChanged();
+    }
+
+    private void RecordOptionRemoval(TemplateInfo info, string option, int removedIndex)
+    {
+        var oldText = info.SelectedText;
+        var oldIndex = info.SelectedIndex;
+        var removedSelection = removedIndex == oldIndex;
+        var newText = removedSelection ? TemplateTextElement.PlaceholderText : oldText;
+        var newIndex = removedSelection
+            ? -1
+            : oldIndex > removedIndex ? oldIndex - 1 : oldIndex;
+
+        RunUndoGroup(() =>
+        {
+            if (oldText != newText)
+            {
+                _editor.Document.Replace(info.Anchor.Offset, info.Length, newText);
+            }
+
+            _editor.Document.UndoStack.Push(new TemplateOptionCollectionOperation(
+                this,
+                info,
+                option,
+                removedIndex,
+                oldText,
+                oldIndex,
+                newText,
+                newIndex,
+                addOnRedo: false));
+            ApplySelectionMetadata(info, newText, newIndex);
+        });
+
+        ClampCaretOffset();
+        NotifyChanged();
     }
 
     private void SelectByMetadata(TemplateInfo info, string text, int selectedIndex)
@@ -214,7 +302,40 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         info.SelectedText = text;
         info.Length = text.Length;
         info.SelectedIndex = selectedIndex;
+        SynchronizeElements(info);
         _editor.TextArea.TextView.Redraw();
+    }
+
+    private static void RegisterElement(TemplateInfo info, TemplateTextElement element)
+    {
+        RemoveDeadElements(info);
+        info.Elements.Add(new WeakReference<TemplateTextElement>(element));
+    }
+
+    private static void SynchronizeElements(TemplateInfo info)
+    {
+        for (var index = info.Elements.Count - 1; index >= 0; index--)
+        {
+            if (info.Elements[index].TryGetTarget(out var element))
+            {
+                element.SynchronizeSelectedIndex(info.SelectedIndex);
+            }
+            else
+            {
+                info.Elements.RemoveAt(index);
+            }
+        }
+    }
+
+    private static void RemoveDeadElements(TemplateInfo info)
+    {
+        for (var index = info.Elements.Count - 1; index >= 0; index--)
+        {
+            if (!info.Elements[index].TryGetTarget(out _))
+            {
+                info.Elements.RemoveAt(index);
+            }
+        }
     }
 
     private void AddTemplateMetadata(TemplateInfo template, bool recreateAnchor = false)
@@ -235,11 +356,27 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 
     private void RemoveTemplateMetadata(TemplateInfo template, bool redraw = true)
     {
+        CloseElementFlyouts(template);
         template.DetachedOffset = template.Anchor.Offset;
         _templates.Remove(template);
         if (redraw)
         {
             _editor.TextArea.TextView.Redraw();
+        }
+    }
+
+    private static void CloseElementFlyouts(TemplateInfo info)
+    {
+        for (var index = info.Elements.Count - 1; index >= 0; index--)
+        {
+            if (info.Elements[index].TryGetTarget(out var element))
+            {
+                element.CloseFlyout();
+            }
+            else
+            {
+                info.Elements.RemoveAt(index);
+            }
         }
     }
 
@@ -295,6 +432,27 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         }
     }
 
+    private void ClampCaretOffset(int maximumOffset)
+    {
+        if (_editor.CaretOffset < 0 || _editor.CaretOffset > maximumOffset)
+        {
+            _editor.CaretOffset = Math.Clamp(_editor.CaretOffset, 0, maximumOffset);
+        }
+    }
+
+    private void ReplayOptionChange(Action action)
+    {
+        _isReplayingOptionChange = true;
+        try
+        {
+            action();
+        }
+        finally
+        {
+            _isReplayingOptionChange = false;
+        }
+    }
+
     private void RunUndoGroup(Action action)
     {
         _editor.Document.UndoStack.StartUndoGroup();
@@ -336,6 +494,7 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         public required string SelectedText { get; set; }
         public required int Length { get; set; }
         public required int SelectedIndex { get; set; }
+        public List<WeakReference<TemplateTextElement>> Elements { get; } = [];
     }
 
     private sealed class TemplateMembershipOperation(
@@ -394,6 +553,57 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
             generator.ApplySelectionMetadata(template, newText, newIndex);
             generator.ClampCaretOffset();
             generator.TemplatesChanged?.Invoke();
+        }
+    }
+
+    private sealed class TemplateOptionCollectionOperation(
+        TemplateTextElementGenerator generator,
+        TemplateInfo template,
+        string option,
+        int optionIndex,
+        string oldText,
+        int oldIndex,
+        string newText,
+        int newIndex,
+        bool addOnRedo) : IUndoableOperation
+    {
+        public void Undo()
+        {
+            ReplayCollectionChange(add: !addOnRedo);
+            generator.ApplySelectionMetadata(template, oldText, oldIndex);
+            var restoredDocumentLength = generator._editor.Document.TextLength -
+                                         newText.Length + oldText.Length;
+            generator.ClampCaretOffset(restoredDocumentLength);
+            generator.TemplatesChanged?.Invoke();
+        }
+
+        public void Redo()
+        {
+            ReplayCollectionChange(addOnRedo);
+            generator.ApplySelectionMetadata(template, newText, newIndex);
+            generator.ClampCaretOffset();
+            generator.TemplatesChanged?.Invoke();
+        }
+
+        private void ReplayCollectionChange(bool add)
+        {
+            generator.ReplayOptionChange(() =>
+            {
+                if (add)
+                {
+                    template.Options.Insert(Math.Min(optionIndex, template.Options.Count), option);
+                    return;
+                }
+
+                var currentIndex = optionIndex < template.Options.Count &&
+                                   template.Options[optionIndex] == option
+                    ? optionIndex
+                    : template.Options.IndexOf(option);
+                if (currentIndex >= 0)
+                {
+                    template.Options.RemoveAt(currentIndex);
+                }
+            });
         }
     }
 }

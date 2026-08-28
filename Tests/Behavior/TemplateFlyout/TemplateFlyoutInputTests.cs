@@ -100,4 +100,28 @@ public sealed class TemplateFlyoutInputTests
             window.Close();
         }
     }
+
+    [AvaloniaFact]
+    public void ListSelectionTracksTheChoiceWhenAnEarlierOptionIsRemoved()
+    {
+        var options = new ObservableCollection<string> { "One", "Two", "Three" };
+        var viewModel = new TemplateFlyoutViewModel(options, 2, _ => { }, () => { });
+        var view = new TemplateFlyoutView { DataContext = viewModel };
+        var window = new Window { Content = view };
+        window.Show();
+        window.UpdateLayout();
+
+        try
+        {
+            var optionsList = view.FindControl<ListBox>("OptionsList")!;
+
+            options.RemoveAt(0);
+
+            Assert.Equal("Three", optionsList.SelectedItem);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
 }

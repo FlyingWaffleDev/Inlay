@@ -91,20 +91,74 @@ public sealed class TemplateTextElementGeneratorTests
     }
 
     [AvaloniaFact]
-    public void RemovingTheSelectedChoiceUsesThePlaceholder()
+    public void AddingAChoiceIsUndoableWithoutChangingSelection()
     {
-        var editor = new TextEditor { Width = 600, Height = 400 };
-        var generator = AttachGenerator(editor);
-        generator.AddTemplate(0, ["One", "Two"], 1);
-        var template = ConstructTemplate(editor);
-        var viewModel = Assert.IsType<TemplateFlyoutViewModel>(template.FlyoutContent.DataContext);
+        var (editor, generator, viewModel) = CreateTemplate(["One"], 0);
 
+        viewModel.NewChoice = "Two";
+        viewModel.AddChoice();
+
+        AssertTemplateState(editor, generator, viewModel, ["One", "Two"], 0);
+
+        editor.Undo();
+        AssertTemplateState(editor, generator, viewModel, ["One"], 0);
+
+        editor.Redo();
+        AssertTemplateState(editor, generator, viewModel, ["One", "Two"], 0);
+    }
+
+    [AvaloniaFact]
+    public void AddingAndSelectingAreSeparateUndoSteps()
+    {
+        var (editor, generator, viewModel) = CreateTemplate([], -1);
+
+        viewModel.NewChoice = "One";
+        viewModel.AddChoice();
+        viewModel.SelectedIndex = 0;
+
+        editor.Undo();
+        AssertTemplateState(editor, generator, viewModel, ["One"], -1);
+
+        editor.Undo();
+        AssertTemplateState(editor, generator, viewModel, [], -1);
+
+        editor.Redo();
+        editor.Redo();
+        AssertTemplateState(editor, generator, viewModel, ["One"], 0);
+    }
+
+    [AvaloniaFact]
+    public void RemovingTheSelectedChoiceIsUndoable()
+    {
+        var (editor, generator, viewModel) = CreateTemplate(["One", "Two"], 0);
+
+        viewModel.SelectedIndex = 1;
         viewModel.RemoveChoice("Two");
 
-        var part = Assert.Single(generator.ExportDocument().Content);
-        Assert.Equal(TemplateTextElement.PlaceholderText, editor.Text);
-        Assert.Equal(["One"], part.Options);
-        Assert.Equal(-1, part.SelectedIndex);
+        AssertTemplateState(editor, generator, viewModel, ["One"], -1);
+
+        editor.Undo();
+        AssertTemplateState(editor, generator, viewModel, ["One", "Two"], 1);
+
+        editor.Redo();
+        AssertTemplateState(editor, generator, viewModel, ["One"], -1);
+    }
+
+    [AvaloniaFact]
+    public void RemovingAnEarlierChoicePreservesSelectionThroughUndoAndRedo()
+    {
+        var (editor, generator, viewModel) = CreateTemplate(
+            ["One", "Two", "Three"],
+            2);
+
+        viewModel.RemoveChoice("One");
+        AssertTemplateState(editor, generator, viewModel, ["Two", "Three"], 1);
+
+        editor.Undo();
+        AssertTemplateState(editor, generator, viewModel, ["One", "Two", "Three"], 2);
+
+        editor.Redo();
+        AssertTemplateState(editor, generator, viewModel, ["Two", "Three"], 1);
     }
 
     [AvaloniaFact]
@@ -146,6 +200,22 @@ public sealed class TemplateTextElementGeneratorTests
         return generator;
     }
 
+    private static (
+        TextEditor Editor,
+        TemplateTextElementGenerator Generator,
+        TemplateFlyoutViewModel ViewModel) CreateTemplate(
+            string[] options,
+            int selectedIndex)
+    {
+        var editor = new TextEditor { Width = 600, Height = 400 };
+        var generator = AttachGenerator(editor);
+        generator.AddTemplate(0, options, selectedIndex);
+        var template = ConstructTemplate(editor);
+        var viewModel = Assert.IsType<TemplateFlyoutViewModel>(
+            template.FlyoutContent.DataContext);
+        return (editor, generator, viewModel);
+    }
+
     private static TemplateTextElement ConstructTemplate(TextEditor editor)
     {
         editor.Measure(new Size(600, 400));
@@ -170,5 +240,22 @@ public sealed class TemplateTextElementGeneratorTests
             part => part.Type == DocumentPartKind.Template);
         Assert.Equal(expectedText, template.Options![expectedIndex]);
         Assert.Equal(expectedIndex, template.SelectedIndex);
+    }
+
+    private static void AssertTemplateState(
+        TextEditor editor,
+        TemplateTextElementGenerator generator,
+        TemplateFlyoutViewModel viewModel,
+        string[] expectedOptions,
+        int expectedIndex)
+    {
+        var template = Assert.Single(generator.ExportDocument().Content);
+        var expectedChoice = expectedIndex >= 0 ? expectedOptions[expectedIndex] : null;
+
+        Assert.Equal(expectedChoice ?? TemplateTextElement.PlaceholderText, editor.Text);
+        Assert.Equal(expectedOptions, template.Options);
+        Assert.Equal(expectedIndex, template.SelectedIndex);
+        Assert.Equal(expectedChoice, viewModel.SelectedChoice);
+        Assert.Equal(expectedIndex, viewModel.SelectedIndex);
     }
 }
