@@ -1,0 +1,54 @@
+{
+  "formatVersion": 1,
+  "content": [
+    {
+      "type": "text",
+      "text": "Product launch brief\n\nAudience\n"
+    },
+    {
+      "type": "template",
+      "options": [
+        "Design teams",
+        "Engineering leads",
+        "Product managers",
+        "Early adopters",
+        "Enterprise customers",
+        "Independent creators"
+      ],
+      "selectedIndex": 2
+    },
+    {
+      "type": "text",
+      "text": "\n\nOpening\nWe're introducing "
+    },
+    {
+      "type": "template",
+      "options": [
+        "a faster review workflow",
+        "one place for product decisions",
+        "a calmer way to ship",
+        "a clearer approval path",
+        "less time chasing context",
+        "a launch plan everyone can see"
+      ],
+      "selectedIndex": 0
+    },
+    {
+      "type": "text",
+      "text": " for teams that want to spend less time chasing context.\n\nCall to action\n"
+    },
+    {
+      "type": "template",
+      "options": [
+        "Start a free workspace",
+        "Book a walkthrough",
+        "Read the launch notes"
+      ],
+      "selectedIndex": 0
+    },
+    {
+      "type": "text",
+      "text": "\n\nNotes\nKeep the announcement direct. Lead with the workflow improvement, then show the before-and-after example. Use the customer quote in the final section."
+    }
+  ]
+}

@@ -1,0 +1,175 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:edit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit">
+  <Styles.Resources>
+    <SolidColorBrush x:Key="InlayCloseButtonHoverBrush" Color="IndianRed" />
+
+    <ControlTheme x:Key="InlayScrollBarPageButtonTheme" TargetType="RepeatButton">
+      <Setter Property="Background" Value="{DynamicResource SystemControlTransparentBrush}" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <ControlTheme x:Key="InlayScrollBarThumbTheme" TargetType="Thumb">
+      <Setter Property="Background"
+              Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border">
+        <Setter Property="Background"
+                Value="{DynamicResource SystemControlForegroundBaseMediumHighBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border">
+        <Setter Property="Background"
+                Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+      </Style>
+      <Style Selector="^:disabled /template/ Border">
+        <Setter Property="Background"
+                Value="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+      </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="InlayVerticalScrollBarTheme" TargetType="ScrollBar">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="MinWidth" Value="10" />
+      <Setter Property="Background"
+              Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <Track Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value, Mode=TwoWay}"
+                   ViewportSize="{TemplateBinding ViewportSize}"
+                   Orientation="{TemplateBinding Orientation}"
+                   DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}"
+                   IsDirectionReversed="True">
+              <Track.DecreaseButton>
+                <RepeatButton Name="PART_PageUpButton"
+                              Theme="{StaticResource InlayScrollBarPageButtonTheme}" />
+              </Track.DecreaseButton>
+              <Track.IncreaseButton>
+                <RepeatButton Name="PART_PageDownButton"
+                              Theme="{StaticResource InlayScrollBarPageButtonTheme}" />
+              </Track.IncreaseButton>
+              <Thumb Theme="{StaticResource InlayScrollBarThumbTheme}"
+                     Width="10"
+                     MinHeight="10" />
+            </Track>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <ControlTheme x:Key="InlayHorizontalScrollBarTheme" TargetType="ScrollBar">
+      <Setter Property="Height" Value="10" />
+      <Setter Property="MinHeight" Value="10" />
+      <Setter Property="Background"
+              Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <Track Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value, Mode=TwoWay}"
+                   ViewportSize="{TemplateBinding ViewportSize}"
+                   Orientation="{TemplateBinding Orientation}"
+                   DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}">
+              <Track.DecreaseButton>
+                <RepeatButton Name="PART_PageLeftButton"
+                              Theme="{StaticResource InlayScrollBarPageButtonTheme}" />
+              </Track.DecreaseButton>
+              <Track.IncreaseButton>
+                <RepeatButton Name="PART_PageRightButton"
+                              Theme="{StaticResource InlayScrollBarPageButtonTheme}" />
+              </Track.IncreaseButton>
+              <Thumb Theme="{StaticResource InlayScrollBarThumbTheme}"
+                     Height="10"
+                     MinWidth="10" />
+            </Track>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+  </Styles.Resources>
+
+  <Style Selector="Window">
+    <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" />
+  </Style>
+
+  <Style Selector="ListBox.persistent-scrollbar /template/ ScrollViewer#PART_ScrollViewer">
+    <Setter Property="VerticalScrollBarVisibility" Value="Visible" />
+    <Setter Property="AllowAutoHide" Value="False" />
+  </Style>
+  <Style Selector="ListBox.themed-scrollbar /template/ ScrollViewer#PART_ScrollViewer /template/ ScrollBar#PART_VerticalScrollBar">
+    <Setter Property="Theme" Value="{StaticResource InlayVerticalScrollBarTheme}" />
+  </Style>
+  <Style Selector="ListBox.font-list /template/ ScrollViewer#PART_ScrollViewer /template/ ScrollBar#PART_VerticalScrollBar">
+    <Setter Property="Margin" Value="4" />
+  </Style>
+  <Style Selector="ScrollViewer.persistent-scrollbar">
+    <Setter Property="VerticalScrollBarVisibility" Value="Visible" />
+    <Setter Property="AllowAutoHide" Value="False" />
+  </Style>
+  <Style Selector="ScrollViewer.themed-scrollbar /template/ ScrollBar#PART_VerticalScrollBar">
+    <Setter Property="Theme" Value="{StaticResource InlayVerticalScrollBarTheme}" />
+  </Style>
+  <Style Selector="edit|TextEditor.themed-scrollbar /template/ ScrollViewer#PART_ScrollViewer /template/ ScrollBar#PART_VerticalScrollBar">
+    <Setter Property="Theme" Value="{StaticResource InlayVerticalScrollBarTheme}" />
+    <Setter Property="Margin" Value="4" />
+  </Style>
+  <Style Selector="edit|TextEditor.themed-scrollbar /template/ ScrollViewer#PART_ScrollViewer /template/ ScrollBar#PART_HorizontalScrollBar">
+    <Setter Property="Theme" Value="{StaticResource InlayHorizontalScrollBarTheme}" />
+    <Setter Property="Margin" Value="4" />
+  </Style>
+
+  <Style Selector="Button.chrome-bar">
+    <Setter Property="Background" Value="{DynamicResource SystemControlTransparentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SystemControlTransparentBrush}" />
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="2" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.chrome-bar Svg.toolbar-icon">
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+  <Style Selector="Button.chrome-bar:pointerover">
+    <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}" />
+  </Style>
+  <Style Selector="Button.chrome-bar:pressed">
+    <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListMediumBrush}" />
+  </Style>
+  <Style Selector="Button.chrome-bar:disabled">
+    <Setter Property="Background" Value="{DynamicResource SystemControlTransparentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SystemControlTransparentBrush}" />
+  </Style>
+  <Style Selector="Button.close-action Path.close-glyph">
+    <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+  </Style>
+  <Style Selector="Button.close-action:pointerover">
+    <Setter Property="Background" Value="{DynamicResource InlayCloseButtonHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource InlayCloseButtonHoverBrush}" />
+  </Style>
+  <Style Selector="Button.close-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource InlayCloseButtonHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource InlayCloseButtonHoverBrush}" />
+  </Style>
+  <Style Selector="Button.close-action:pointerover Path.close-glyph">
+    <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundChromeWhiteBrush}" />
+  </Style>
+</Styles>

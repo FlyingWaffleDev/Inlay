@@ -1,0 +1,391 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Inlay.Controls"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        xmlns:vm="clr-namespace:Inlay.ViewModels"
+        x:Class="Inlay.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="980" Height="680"
+        MinWidth="680" MinHeight="440"
+        Background="{DynamicResource InlayShellBackgroundBrush}"
+        Title="{Binding Title}">
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+N" Command="{Binding NewCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+N" Command="{Binding NewWindowCommand}" />
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAsCommand}" />
+    <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseTabCommand}"
+                CommandParameter="{Binding SelectedDocument}" />
+    <KeyBinding Gesture="Ctrl+Q" Command="{Binding ExitCommand}" />
+    <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+    <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}" />
+    <KeyBinding Gesture="Ctrl+X" Command="{Binding CutCommand}" />
+    <KeyBinding Gesture="Ctrl+C" Command="{Binding CopyCommand}" />
+    <KeyBinding Gesture="Ctrl+V" Command="{Binding PasteCommand}" />
+    <KeyBinding Gesture="Delete" Command="{Binding DeleteCommand}" />
+    <KeyBinding Gesture="Ctrl+A" Command="{Binding SelectAllCommand}" />
+    <KeyBinding Gesture="Ctrl+F" Command="{Binding FindCommand}" />
+    <KeyBinding Gesture="Ctrl+H" Command="{Binding ReplaceCommand}" />
+    <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+OemPlus" Command="{Binding ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+Add" Command="{Binding ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding ZoomOutCommand}" />
+    <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding ZoomOutCommand}" />
+    <KeyBinding Gesture="Ctrl+D0" Command="{Binding RestoreDefaultZoomCommand}" />
+    <KeyBinding Gesture="Ctrl+NumPad0" Command="{Binding RestoreDefaultZoomCommand}" />
+  </Window.KeyBindings>
+  <NativeMenu.Menu>
+    <NativeMenu>
+      <NativeMenuItem Header="File">
+        <NativeMenu>
+          <NativeMenuItem Header="New" Gesture="Ctrl+N" Command="{Binding NewCommand}" />
+          <NativeMenuItem Header="New Window" Gesture="Ctrl+Shift+N"
+                          Command="{Binding NewWindowCommand}" />
+          <NativeMenuItem Header="Open" Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Save" Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+          <NativeMenuItem Header="Save As" Gesture="Ctrl+Shift+S" Command="{Binding SaveAsCommand}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Close tab" Gesture="Ctrl+W" Command="{Binding CloseTabCommand}"
+                          CommandParameter="{Binding SelectedDocument}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Exit" Gesture="Ctrl+Q" Command="{Binding ExitCommand}" />
+        </NativeMenu>
+      </NativeMenuItem>
+      <NativeMenuItem Header="Edit">
+        <NativeMenu>
+          <NativeMenuItem Header="Undo" Gesture="Ctrl+Z" Command="{Binding UndoCommand}"
+                          IsEnabled="{Binding Editor.CanUndo}" />
+          <NativeMenuItem Header="Redo" Gesture="Ctrl+Y" Command="{Binding RedoCommand}"
+                          IsEnabled="{Binding Editor.CanRedo}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Cut" Gesture="Ctrl+X" Command="{Binding CutCommand}"
+                          IsEnabled="{Binding Editor.CanCut}" />
+          <NativeMenuItem Header="Copy" Gesture="Ctrl+C" Command="{Binding CopyCommand}"
+                          IsEnabled="{Binding Editor.CanCopy}" />
+          <NativeMenuItem Header="Paste" Gesture="Ctrl+V" Command="{Binding PasteCommand}"
+                          IsEnabled="{Binding Editor.CanPaste}" />
+          <NativeMenuItem Header="Select All" Gesture="Ctrl+A" Command="{Binding SelectAllCommand}"
+                          IsEnabled="{Binding Editor.CanSelectAll}" />
+          <NativeMenuItem Header="Delete" Gesture="Delete" Command="{Binding DeleteCommand}"
+                          IsEnabled="{Binding Editor.CanDelete}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Find" Gesture="Ctrl+F" Command="{Binding FindCommand}" />
+          <NativeMenuItem Header="Replace" Gesture="Ctrl+H" Command="{Binding ReplaceCommand}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Font" Command="{Binding FontCommand}" />
+        </NativeMenu>
+      </NativeMenuItem>
+      <NativeMenuItem Header="View">
+        <NativeMenu>
+          <NativeMenuItem Header="Zoom">
+            <NativeMenu>
+              <NativeMenuItem Header="Zoom In" Gesture="Ctrl+OemPlus"
+                              Command="{Binding ZoomInCommand}" />
+              <NativeMenuItem Header="Zoom Out" Gesture="Ctrl+OemMinus"
+                              Command="{Binding ZoomOutCommand}" />
+              <NativeMenuItemSeparator />
+              <NativeMenuItem Header="Restore Default" Gesture="Ctrl+D0"
+                              Command="{Binding RestoreDefaultZoomCommand}" />
+            </NativeMenu>
+          </NativeMenuItem>
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Status Bar" ToggleType="CheckBox"
+                          IsChecked="{Binding IsStatusBarVisible, Mode=OneWay}"
+                          Command="{Binding ToggleStatusBarCommand}" />
+          <NativeMenuItem Header="Word Wrap" ToggleType="CheckBox"
+                          IsChecked="{Binding IsWordWrapEnabled, Mode=OneWay}"
+                          Command="{Binding ToggleWordWrapCommand}" />
+          <NativeMenuItem Header="Current Line Highlight" ToggleType="CheckBox"
+                          IsChecked="{Binding IsCurrentLineHighlightEnabled, Mode=OneWay}"
+                          Command="{Binding ToggleCurrentLineHighlightCommand}" />
+          <NativeMenuItem Header="Line Length Limits">
+            <NativeMenu>
+              <NativeMenuItem Header="Show" ToggleType="CheckBox"
+                              IsChecked="{Binding Editor.ShowLineLengthIndicators, Mode=OneWay}"
+                              Command="{Binding ToggleLineLengthIndicatorsCommand}" />
+              <NativeMenuItem Header="Enforce" ToggleType="CheckBox"
+                              IsChecked="{Binding Editor.EnforceHardLineLengthLimit, Mode=OneWay}"
+                              Command="{Binding ToggleHardLineLengthLimitCommand}" />
+            </NativeMenu>
+          </NativeMenuItem>
+        </NativeMenu>
+      </NativeMenuItem>
+      <NativeMenuItem Header="Help">
+        <NativeMenu>
+          <NativeMenuItem Header="Using templates" Command="{Binding TemplateHelpCommand}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="About Inlay" Command="{Binding AboutCommand}" />
+        </NativeMenu>
+      </NativeMenuItem>
+    </NativeMenu>
+  </NativeMenu.Menu>
+
+  <DockPanel>
+    <NativeMenuBar DockPanel.Dock="Top" />
+
+    <Border x:Name="ToolbarBar" DockPanel.Dock="Top"
+            Background="{DynamicResource InlayToolbarBackgroundBrush}"
+            BorderBrush="{DynamicResource InlayShellBorderBrush}"
+            BorderThickness="0,0,0,1" Padding="10,8">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <Button Classes="chrome-bar" ToolTip.Tip="New"
+                AutomationProperties.Name="New" Command="{Binding NewCommand}">
+          <svg:Svg Classes="toolbar-icon" Path="/Assets/new-document.svg"
+                   CurrentColor="{DynamicResource SystemBaseHighColor}" />
+        </Button>
+        <Button Classes="chrome-bar" ToolTip.Tip="Open"
+                AutomationProperties.Name="Open" Command="{Binding OpenCommand}">
+          <svg:Svg Classes="toolbar-icon" Path="/Assets/open-document.svg"
+                   CurrentColor="{DynamicResource SystemBaseHighColor}" />
+        </Button>
+        <Border Width="1" Margin="4,0"
+                Background="{DynamicResource InlayShellBorderBrush}" />
+        <Button Classes="chrome-bar" ToolTip.Tip="Save"
+                AutomationProperties.Name="Save" Command="{Binding SaveCommand}">
+          <svg:Svg Classes="toolbar-icon" Path="/Assets/save.svg"
+                   CurrentColor="{DynamicResource SystemBaseHighColor}" />
+        </Button>
+        <Button Classes="chrome-bar" ToolTip.Tip="Save As"
+                AutomationProperties.Name="Save As" Command="{Binding SaveAsCommand}">
+          <svg:Svg Classes="toolbar-icon" Path="/Assets/save-as.svg"
+                   CurrentColor="{DynamicResource SystemBaseHighColor}" />
+        </Button>
+        <Border Width="1" Margin="4,0"
+                Background="{DynamicResource InlayShellBorderBrush}" />
+        <Button Classes="chrome-bar" ToolTip.Tip="Undo"
+                AutomationProperties.Name="Undo" Command="{Binding UndoCommand}"
+                IsEnabled="{Binding Editor.CanUndo}">
+          <svg:Svg Classes="toolbar-icon" Path="/Assets/undo.svg"
+                   CurrentColor="{DynamicResource SystemBaseHighColor}" />
+        </Button>
+        <Button Classes="chrome-bar" ToolTip.Tip="Redo"
+                AutomationProperties.Name="Redo" Command="{Binding RedoCommand}"
+                IsEnabled="{Binding Editor.CanRedo}">
+          <svg:Svg Classes="toolbar-icon" Path="/Assets/redo.svg"
+                   CurrentColor="{DynamicResource SystemBaseHighColor}" />
+        </Button>
+        <Border Width="1" Margin="4,0"
+                Background="{DynamicResource InlayShellBorderBrush}" />
+        <Button Classes="chrome-bar" ToolTip.Tip="Insert Template"
+                AutomationProperties.Name="Insert Template"
+                Command="{Binding InsertTemplateCommand}">
+          <svg:Svg Classes="toolbar-icon" Path="/Assets/insert-template.svg"
+                   CurrentColor="{DynamicResource SystemBaseHighColor}" />
+        </Button>
+        <Border Width="1" Margin="4,0"
+                Background="{DynamicResource InlayShellBorderBrush}" />
+        <Button x:Name="LineLengthButton"
+                Classes="chrome-bar" ToolTip.Tip="Line length limits"
+                AutomationProperties.Name="Line length limits">
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <Border Padding="16" MinWidth="320">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Line length limits" FontWeight="SemiBold" />
+                  <StackPanel Orientation="Horizontal" Spacing="16">
+                    <CheckBox x:Name="ShowLineLengthLimitsToggle" Content="Show"
+                              IsChecked="{Binding Editor.ShowLineLengthIndicators, Mode=TwoWay}" />
+                    <CheckBox x:Name="EnforceLineLengthLimitsToggle" Content="Enforce"
+                              IsChecked="{Binding Editor.EnforceHardLineLengthLimit, Mode=TwoWay}" />
+                  </StackPanel>
+                  <Grid ColumnDefinitions="*,140" RowDefinitions="Auto,Auto"
+                        ColumnSpacing="12" RowSpacing="8">
+                    <TextBlock Grid.Row="0" Text="Soft limit" VerticalAlignment="Center" />
+                    <NumericUpDown x:Name="SoftLineLengthInput"
+                                   Grid.Row="0" Grid.Column="1"
+                                   MinWidth="140"
+                                   Minimum="1"
+                                   Maximum="{Binding Editor.HardLineLengthLimit}"
+                                   Increment="1" FormatString="0"
+                                   Value="{Binding Editor.SoftLineLengthLimit, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="1" Text="Hard limit" VerticalAlignment="Center" />
+                    <NumericUpDown x:Name="HardLineLengthInput"
+                                   Grid.Row="1" Grid.Column="1"
+                                   MinWidth="140"
+                                   Minimum="1"
+                                   Maximum="500"
+                                   Increment="1" FormatString="0"
+                                   Value="{Binding Editor.HardLineLengthLimit, Mode=TwoWay}" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+            </Flyout>
+          </Button.Flyout>
+          <svg:Svg Classes="toolbar-icon" Path="/Assets/line-length-limits.svg"
+                   CurrentColor="{DynamicResource SystemBaseHighColor}" />
+        </Button>
+      </StackPanel>
+    </Border>
+
+    <Border x:Name="StatusBar" DockPanel.Dock="Bottom"
+            IsVisible="{Binding IsStatusBarVisible}"
+            Background="{DynamicResource InlayShellBackgroundBrush}"
+            BorderBrush="{DynamicResource InlayShellBorderBrush}"
+            BorderThickness="0,1,0,0" Padding="10,6">
+      <TextBlock HorizontalAlignment="Right" Text="{Binding Editor.Diagnostics}" />
+    </Border>
+
+    <Grid RowDefinitions="Auto,Auto,*" Margin="12">
+      <Border x:Name="TabBar" Grid.Row="0"
+              ZIndex="1"
+              Background="{DynamicResource InlayShellBackgroundBrush}"
+              BorderBrush="{DynamicResource InlayShellBorderBrush}"
+              BorderThickness="1,1,1,0" CornerRadius="4,4,0,0"
+              PointerWheelChanged="OnTabsPointerWheelChanged">
+        <Grid ColumnDefinitions="*,Auto">
+          <ScrollViewer x:Name="TabsScrollViewer"
+                        HorizontalScrollBarVisibility="Hidden"
+                        VerticalScrollBarVisibility="Disabled"
+                        ScrollChanged="OnTabsScrollChanged"
+                        SizeChanged="OnTabsScrollViewerSizeChanged"
+                        DoubleTapped="OnEmptyTabBarDoubleTapped">
+            <TabStrip x:Name="DocumentTabs"
+                      HorizontalAlignment="Left"
+                      ItemsSource="{Binding Documents}"
+                      SelectedItem="{Binding SelectedDocument}"
+                      SelectionChanged="OnDocumentTabSelectionChanged"
+                      PointerPressed="OnTabPointerPressed">
+              <TabStrip.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </TabStrip.ItemsPanel>
+              <TabStrip.Styles>
+                <Style Selector="TabStripItem">
+                  <Setter Property="Margin" Value="3,3,0,-1" />
+                  <Setter Property="BorderBrush" Value="{DynamicResource InlayShellBorderBrush}" />
+                  <Setter Property="BorderThickness" Value="0,0,0,1" />
+                  <Setter Property="CornerRadius" Value="0" />
+                </Style>
+                <Style Selector="TabStripItem:selected">
+                  <Setter Property="Background" Value="{DynamicResource InlayEditorBackgroundBrush}" />
+                  <Setter Property="BorderBrush" Value="{DynamicResource InlayShellBorderBrush}" />
+                  <Setter Property="BorderThickness" Value="1,1,1,0" />
+                  <Setter Property="CornerRadius" Value="4,4,0,0" />
+                </Style>
+              </TabStrip.Styles>
+              <TabStrip.ItemTemplate>
+                <DataTemplate x:DataType="vm:DocumentTabViewModel">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding Header}" FontSize="18" />
+                    <Button Classes="tab-close close-action"
+                            Width="24"
+                            Height="24"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            ToolTip.Tip="Close tab"
+                            Command="{Binding CloseCommand}">
+                      <Path Classes="close-glyph"
+                            Width="10"
+                            Height="10"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Data="M 0,0 L 10,10 M 10,0 L 0,10"
+                            StrokeThickness="2"
+                            StrokeLineCap="Round" />
+                    </Button>
+                  </StackPanel>
+                </DataTemplate>
+              </TabStrip.ItemTemplate>
+            </TabStrip>
+          </ScrollViewer>
+
+          <StackPanel x:Name="TabScrollButtons"
+                      Grid.Column="1"
+                      Orientation="Horizontal"
+                      VerticalAlignment="Stretch"
+                      Margin="3"
+                      Spacing="2"
+                      IsVisible="False">
+            <Button x:Name="ScrollTabsLeftButton"
+                    Classes="tab-scroll"
+                    Width="28"
+                    Padding="0"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    VerticalAlignment="Stretch"
+                    ToolTip.Tip="Scroll tabs left"
+                    AutomationProperties.Name="Scroll tabs left"
+                    Click="ScrollTabsLeftClicked">
+              <Path Width="8"
+                    Height="10"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Data="M 8,0 L 2,5 L 8,10"
+                    Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                    StrokeThickness="2"
+                    StrokeLineCap="Round"
+                    StrokeJoin="Round" />
+            </Button>
+            <Button x:Name="ScrollTabsRightButton"
+                    Classes="tab-scroll"
+                    Width="28"
+                    Padding="0"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    VerticalAlignment="Stretch"
+                    ToolTip.Tip="Scroll tabs right"
+                    AutomationProperties.Name="Scroll tabs right"
+                    Click="ScrollTabsRightClicked">
+              <Path Width="8"
+                    Height="10"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Data="M 0,0 L 6,5 L 0,10"
+                    Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                    StrokeThickness="2"
+                    StrokeLineCap="Round"
+                    StrokeJoin="Round" />
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Border x:Name="ExternalChangesPanel"
+              Grid.Row="1" Margin="0" Padding="12,10"
+              IsVisible="{Binding SelectedDocument.HasExternalChanges}"
+              Background="{DynamicResource SystemControlHighlightListAccentLowBrush}"
+              BorderBrush="{DynamicResource SystemControlHighlightAccentBrush}"
+              BorderThickness="1" CornerRadius="0">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding SelectedDocument.ExternalChangesMessage}"
+                     VerticalAlignment="Center" TextWrapping="Wrap" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+            <Button Content="Ignore"
+                    Command="{Binding IgnoreExternalChangesCommand}"
+                    CommandParameter="{Binding SelectedDocument}" />
+            <Button Classes="accent" Content="Reload"
+                    Command="{Binding ReloadExternalChangesCommand}"
+                    CommandParameter="{Binding SelectedDocument}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Border x:Name="EditorBorder" Grid.Row="2" Margin="0" Padding="0"
+              BorderBrush="{DynamicResource InlayShellBorderBrush}"
+              BorderThickness="1" CornerRadius="0" ClipToBounds="True">
+        <controls:TemplateTextEditor Classes="themed-scrollbar"
+                                     EditorState="{Binding Editor}"
+                                     IsEnabled="{Binding SelectedDocument.CanEdit}"
+                                     FontFamily="{Binding EditorFontFamily}"
+                                     FontSize="{Binding EditorFontSize}"
+                                     Background="{DynamicResource InlayEditorBackgroundBrush}"
+                                     Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                     LineNumbersForeground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                     ShowLineNumbers="True"
+                                     ViewportWordWrap="{Binding IsWordWrapEnabled}"
+                                     HighlightCurrentLine="{Binding IsCurrentLineHighlightEnabled}"
+                                     ShowLineLengthIndicators="{Binding Editor.ShowLineLengthIndicators}"
+                                     EnforceHardLineLengthLimit="{Binding Editor.EnforceHardLineLengthLimit}"
+                                     SoftLineLengthLimit="{Binding Editor.SoftLineLengthLimit}"
+                                     HardLineLengthLimit="{Binding Editor.HardLineLengthLimit}"
+                                     SoftLineLengthIndicatorBrush="{DynamicResource InlaySoftLineLengthIndicatorBrush}"
+                                     HardLineLengthIndicatorBrush="{DynamicResource InlayHardLineLengthIndicatorBrush}"
+                                     Padding="0" />
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

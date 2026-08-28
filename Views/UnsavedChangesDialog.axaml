@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Inlay.ViewModels"
+        x:Class="Inlay.UnsavedChangesDialog"
+        x:DataType="vm:UnsavedChangesDialogViewModel"
+        Title="Unsaved changes" Width="430" Height="110"
+        Background="{DynamicResource InlayShellBackgroundBrush}"
+        CanResize="False" WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="20" Spacing="18">
+    <TextBlock Text="This document has unsaved changes."
+               FontSize="16" TextWrapping="Wrap" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="Cancel" MinWidth="80" Command="{Binding CancelCommand}" />
+      <Button Content="Discard" MinWidth="80" Command="{Binding DiscardCommand}" />
+      <Button Content="Save" MinWidth="80" Command="{Binding SaveCommand}" />
+    </StackPanel>
+  </StackPanel>
+</Window>

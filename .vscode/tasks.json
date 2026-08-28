@@ -1,0 +1,78 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build Inlay (Debug)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/Inlay.csproj",
+        "--configuration",
+        "Debug"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "publish Inlay (Release single-file)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "${workspaceFolder}/Inlay.csproj",
+        "--configuration",
+        "Release",
+        "--force",
+        "--use-current-runtime",
+        "--self-contained",
+        "true",
+        "--output",
+        "${workspaceFolder}/artifacts/release",
+        "--property:Configuration=Release",
+        "--property:PublishSingleFile=true",
+        "--property:IncludeNativeLibrariesForSelfExtract=true",
+        "--property:DebugType=None",
+        "--property:DebugSymbols=false"
+      ],
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "test Inlay",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Inlay.Tests/Inlay.Tests.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "update Inlay hero image",
+      "type": "process",
+      "command": "${workspaceFolder}/tools/HeroCapture/capture.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ]
+}

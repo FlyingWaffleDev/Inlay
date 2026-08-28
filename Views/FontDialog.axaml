@@ -1,0 +1,49 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Inlay.ViewModels"
+        x:Class="Inlay.FontDialog"
+        x:DataType="vm:FontDialogViewModel"
+        Title="Font" Width="500" Height="520"
+        MinWidth="360" MinHeight="360"
+        Background="{DynamicResource InlayShellBackgroundBrush}"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="24" RowDefinitions="Auto,*,Auto,Auto" RowSpacing="12">
+    <TextBlock Grid.Row="0" Text="Monospace fonts" FontSize="18" FontWeight="SemiBold" />
+
+    <Grid Grid.Row="1">
+      <ListBox x:Name="FontList"
+               Classes="font-list persistent-scrollbar themed-scrollbar"
+               BorderBrush="{DynamicResource InlayShellBorderBrush}"
+               BorderThickness="1"
+               CornerRadius="4"
+               ItemsSource="{Binding Fonts}"
+               SelectedItem="{Binding SelectedFont, Mode=TwoWay}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:FontOption">
+            <TextBlock Text="{Binding Name}" FontFamily="{Binding Family}" FontSize="16" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <TextBlock Text="{Binding StatusMessage}"
+                 IsVisible="{Binding HasStatusMessage}"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center" />
+    </Grid>
+
+    <Border Grid.Row="2" Padding="12"
+            BorderBrush="{DynamicResource InlayShellBorderBrush}"
+            BorderThickness="1" CornerRadius="4">
+      <TextBlock Text="The quick brown fox jumps over the lazy dog. 0123456789"
+                 FontFamily="{Binding PreviewFontFamily}"
+                 TextWrapping="Wrap" />
+    </Border>
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="Cancel" MinWidth="88" IsCancel="True"
+              Command="{Binding CancelCommand}" />
+      <Button x:Name="ConfirmButton" Classes="accent" Content="OK" MinWidth="88"
+              IsDefault="True" IsEnabled="{Binding HasFonts}"
+              Command="{Binding ConfirmCommand}" />
+    </StackPanel>
+  </Grid>
+</Window>

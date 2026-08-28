@@ -1,0 +1,30 @@
+root = true
+
+[Program.cs]
+# The Avalonia VS Code previewer requires this entry point to be public.
+dotnet_diagnostic.CA1515.severity = none
+
+[Views/MainWindow.axaml.cs]
+# Window continuations must resume on Avalonia's UI thread.
+dotnet_diagnostic.CA2007.severity = none
+
+[Views/FontDialog.axaml.cs]
+# Font discovery failures are converted into dialog status here.
+dotnet_diagnostic.CA1031.severity = none
+
+[ViewModels/*.cs]
+# Reactive commands update bound properties after awaits and require the UI context.
+dotnet_diagnostic.CA2007.severity = none
+
+[ViewModels/MainWindowViewModel.cs]
+# File and platform failures are converted into user-visible error dialogs here.
+dotnet_diagnostic.CA1031.severity = none
+
+[Services/AvaloniaUserInteractionService.cs]
+# Storage pickers and dialogs are Avalonia UI operations.
+dotnet_diagnostic.CA2007.severity = none
+
+[Tests/**/*.cs]
+# xUnit requires public test classes and preserves its own synchronization context.
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA2007.severity = none

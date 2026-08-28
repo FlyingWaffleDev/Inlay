@@ -1,0 +1,37 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="InlayShellBackgroundBrush"
+                       Color="{DynamicResource SystemChromeLowColor}" />
+      <SolidColorBrush x:Key="InlayToolbarBackgroundBrush"
+                       Color="{DynamicResource SystemChromeMediumColor}" />
+      <SolidColorBrush x:Key="InlayEditorBackgroundBrush"
+                       Color="{DynamicResource SystemChromeWhiteColor}" />
+      <SolidColorBrush x:Key="InlayShellBorderBrush"
+                       Color="{DynamicResource SystemChromeHighColor}" />
+      <SolidColorBrush x:Key="InlayTemplateForegroundBrush"
+                       Color="#008BF6" />
+      <SolidColorBrush x:Key="InlaySoftLineLengthIndicatorBrush"
+                       Color="#26F5A623" />
+      <SolidColorBrush x:Key="InlayHardLineLengthIndicatorBrush"
+                       Color="#30E5484D" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="InlayShellBackgroundBrush"
+                       Color="{DynamicResource SystemChromeMediumColor}" />
+      <SolidColorBrush x:Key="InlayToolbarBackgroundBrush"
+                       Color="{DynamicResource SystemChromeMediumLowColor}" />
+      <SolidColorBrush x:Key="InlayEditorBackgroundBrush"
+                       Color="{DynamicResource SystemChromeMediumColor}" />
+      <SolidColorBrush x:Key="InlayShellBorderBrush"
+                       Color="{DynamicResource SystemBaseLowColor}" />
+      <SolidColorBrush x:Key="InlayTemplateForegroundBrush"
+                       Color="#60CDFF" />
+      <SolidColorBrush x:Key="InlaySoftLineLengthIndicatorBrush"
+                       Color="#33FFB900" />
+      <SolidColorBrush x:Key="InlayHardLineLengthIndicatorBrush"
+                       Color="#38FF5F57" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

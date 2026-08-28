@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Inlay text template editor icon - dark mode</title>
+  <desc id="desc">A dark rounded-square application icon showing lines of text with an interactive template block embedded in the middle line.</desc>
+
+  <!-- App tile -->
+  <rect x="28" y="28" width="456" height="456" rx="92" fill="#26292F"/>
+
+  <!-- Subtle editor gutter -->
+  <rect x="84" y="98" width="8" height="316" rx="4" fill="#50555E"/>
+
+  <!-- Text lines -->
+  <rect x="122" y="116" width="238" height="24" rx="12" fill="#F2F4F7"/>
+  <rect x="122" y="178" width="102" height="24" rx="12" fill="#F2F4F7"/>
+  <rect x="360" y="178" width="66" height="24" rx="12" fill="#F2F4F7"/>
+  <rect x="122" y="240" width="286" height="24" rx="12" fill="#F2F4F7"/>
+  <rect x="122" y="302" width="190" height="24" rx="12" fill="#F2F4F7"/>
+  <rect x="122" y="364" width="246" height="24" rx="12" fill="#F2F4F7"/>
+
+  <!-- Inline template object -->
+  <rect x="242" y="158" width="104" height="64" rx="16" fill="#17B7E8"/>
+  <rect x="258" y="181" width="48" height="14" rx="7" fill="#10242B" opacity="0.9"/>
+
+  <!-- Dropdown chevron -->
+  <path d="M316 184 L326 194 L336 184"
+        fill="none" stroke="#10242B" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Caret, hinting at text-editor insertion -->
+  <rect x="403" y="292" width="7" height="44" rx="3.5" fill="#17B7E8"/>
+</svg>

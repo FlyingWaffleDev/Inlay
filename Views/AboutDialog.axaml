@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Inlay.ViewModels"
+        x:Class="Inlay.AboutDialog"
+        x:DataType="vm:CloseDialogViewModel"
+        Title="About Inlay" Width="400" Height="400"
+        Background="{DynamicResource InlayShellBackgroundBrush}"
+        CanResize="False" WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="28" Spacing="12" HorizontalAlignment="Stretch">
+    <Image x:Name="Logo" Width="192" Height="192" HorizontalAlignment="Center" />
+    <TextBlock Text="Inlay" FontSize="28" FontWeight="SemiBold"
+               HorizontalAlignment="Center" />
+    <TextBlock Text="Simple text editor with inline template choices."
+               TextWrapping="Wrap" TextAlignment="Center"
+               HorizontalAlignment="Center" />
+    <Button Content="Close" MinWidth="80" HorizontalAlignment="Center"
+            Command="{Binding CloseCommand}" />
+  </StackPanel>
+</Window>

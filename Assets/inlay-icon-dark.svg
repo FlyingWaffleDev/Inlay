@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Inlay text template editor icon - light mode</title>
+  <desc id="desc">A light rounded-square application icon showing lines of text with an interactive template block embedded in the middle line.</desc>
+
+  <!-- App tile -->
+  <rect x="28" y="28" width="456" height="456" rx="92" fill="#F4F5F7"/>
+
+  <!-- Subtle editor gutter -->
+  <rect x="84" y="98" width="8" height="316" rx="4" fill="#C8CDD5"/>
+
+  <!-- Text lines -->
+  <rect x="122" y="116" width="238" height="24" rx="12" fill="#34383F"/>
+  <rect x="122" y="178" width="102" height="24" rx="12" fill="#34383F"/>
+  <rect x="360" y="178" width="66" height="24" rx="12" fill="#34383F"/>
+  <rect x="122" y="240" width="286" height="24" rx="12" fill="#34383F"/>
+  <rect x="122" y="302" width="190" height="24" rx="12" fill="#34383F"/>
+  <rect x="122" y="364" width="246" height="24" rx="12" fill="#34383F"/>
+
+  <!-- Inline template object -->
+  <rect x="242" y="158" width="104" height="64" rx="16" fill="#D8F4FC"/>
+  <rect x="242" y="158" width="104" height="64" rx="16"
+        fill="none" stroke="#17B7E8" stroke-width="6"/>
+  <rect x="258" y="181" width="48" height="14" rx="7" fill="#137EA0"/>
+
+  <!-- Dropdown chevron -->
+  <path d="M316 184 L326 194 L336 184"
+        fill="none" stroke="#137EA0" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Caret -->
+  <rect x="403" y="292" width="7" height="44" rx="3.5" fill="#17B7E8"/>
+</svg>

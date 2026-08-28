@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Inlay: Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build Inlay (Debug)",
+      "program": "${workspaceFolder}/bin/Debug/net10.0/Inlay.dll",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "justMyCode": true
+    },
+    {
+      "name": "Inlay: Release single-file",
+      "type": "node-terminal",
+      "request": "launch",
+      "preLaunchTask": "publish Inlay (Release single-file)",
+      "command": "\"${workspaceFolder}/artifacts/release/Inlay\"",
+      "cwd": "${workspaceFolder}",
+      "windows": {
+        "command": "\"${workspaceFolder}\\artifacts\\release\\Inlay.exe\""
+      }
+    }
+  ]
+}

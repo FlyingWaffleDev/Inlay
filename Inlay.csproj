@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AssemblyName>Inlay</AssemblyName>
+    <AssemblyTitle>Inlay</AssemblyTitle>
+    <RootNamespace>Inlay</RootNamespace>
+    <PackageId>Inlay</PackageId>
+    <Product>Inlay</Product>
+    <ApplicationTitle>Inlay</ApplicationTitle>
+    <Description>JSON text editor with inline template choices.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.1" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3"
+                      Condition="'$(Configuration)' == 'Debug'"
+                      PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="ReactiveUI" Version="24.1.0" />
+    <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.1" />
+    <PackageReference Include="ReactiveUI.SourceGenerators" Version="3.2.0" PrivateAssets="all" />
+    <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.15" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+    <Compile Remove="tools/**/*.cs" />
+    <AvaloniaResource Remove="tests/**" />
+    <AvaloniaResource Remove="tools/**" />
+    <None Remove="tests/**" />
+    <None Remove="tools/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inlay.Tests" />
+    <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
+</Project>
