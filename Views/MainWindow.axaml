@@ -177,13 +177,13 @@
         <Border Width="1" Margin="4,0"
                 Background="{DynamicResource InlayShellBorderBrush}" />
         <Button x:Name="LineLengthButton"
-                Classes="chrome-bar" ToolTip.Tip="Line length limits"
-                AutomationProperties.Name="Line length limits">
+                Classes="chrome-bar" ToolTip.Tip="Line Length Limits"
+                AutomationProperties.Name="Line Length Limits">
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft">
               <Border Padding="16" MinWidth="320">
                 <StackPanel Spacing="12">
-                  <TextBlock Text="Line length limits" FontWeight="SemiBold" />
+                  <TextBlock Text="Line Length Limits" FontWeight="SemiBold" />
                   <StackPanel Orientation="Horizontal" Spacing="16">
                     <CheckBox x:Name="ShowLineLengthLimitsToggle" Content="Show"
                               IsChecked="{Binding Editor.ShowLineLengthIndicators, Mode=TwoWay}" />
