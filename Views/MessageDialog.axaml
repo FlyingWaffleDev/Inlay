@@ -3,11 +3,12 @@
         xmlns:vm="clr-namespace:Inlay.ViewModels"
         x:Class="Inlay.MessageDialog"
         x:DataType="vm:MessageDialogViewModel"
-        Title="{Binding Title}" Width="460" Height="190"
+        Title="{Binding Title}" MinWidth="460"
+        SizeToContent="WidthAndHeight"
         Background="{DynamicResource InlayShellBackgroundBrush}"
         CanResize="False" WindowStartupLocation="CenterOwner">
   <StackPanel Margin="20" Spacing="18">
-    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+    <TextBlock Text="{Binding Message}" MaxWidth="600" TextWrapping="Wrap" />
     <Button Content="Close" MinWidth="80" HorizontalAlignment="Right"
             Command="{Binding CloseCommand}" />
   </StackPanel>

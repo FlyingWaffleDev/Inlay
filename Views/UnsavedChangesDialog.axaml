@@ -3,7 +3,8 @@
         xmlns:vm="clr-namespace:Inlay.ViewModels"
         x:Class="Inlay.UnsavedChangesDialog"
         x:DataType="vm:UnsavedChangesDialogViewModel"
-        Title="Unsaved changes" Width="430" Height="110"
+        Title="Unsaved changes" MinWidth="430"
+        SizeToContent="WidthAndHeight"
         Background="{DynamicResource InlayShellBackgroundBrush}"
         CanResize="False" WindowStartupLocation="CenterOwner">
   <StackPanel Margin="20" Spacing="18">
