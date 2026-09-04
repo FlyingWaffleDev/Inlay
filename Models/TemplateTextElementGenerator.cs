@@ -388,23 +388,9 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         return (Control)_flyoutView!.Content!;
     }
 
-    internal Point GetFlyoutPosition(TemplateTextElement element)
-    {
-        ActivateFlyout(element);
-        return _flyoutAnchorRectangle.TopLeft;
-    }
+    internal Rect FlyoutAnchorRectangle => _flyoutAnchorRectangle;
 
-    internal Rect GetFlyoutAnchorRectangle(TemplateTextElement element)
-    {
-        ActivateFlyout(element);
-        return _flyoutAnchorRectangle;
-    }
-
-    internal PlacementMode GetFlyoutPlacement(TemplateTextElement element)
-    {
-        ActivateFlyout(element);
-        return _flyout!.Placement;
-    }
+    internal PlacementMode? FlyoutPlacement => _flyout?.Placement;
 
     internal bool IsFlyoutOpen(TemplateTextElement element)
     {
@@ -419,7 +405,6 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         Control placementTarget,
         Point position)
     {
-        ActivateFlyout(element);
         CaptureFlyoutPosition(element, placementTarget, position);
         _flyout!.ShowAt(placementTarget);
     }
