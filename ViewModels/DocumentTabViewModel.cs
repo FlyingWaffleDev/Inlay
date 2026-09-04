@@ -44,7 +44,7 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     public string ExternalChangesMessage => $"{FileName} changed outside Inlay. Reload it or ignore the changes?";
 
-    public bool IsEmptyUntitled =>
+    public bool IsEmptyUntitled() =>
         File is null && !IsDirty && Editor.ExportDocument().Content.Count == 0;
 
     public bool HasExternalChanges

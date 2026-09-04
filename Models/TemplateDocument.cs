@@ -13,6 +13,8 @@ internal sealed class LineLengthSettings
 {
     public const int DefaultSoftLimit = 80;
     public const int DefaultHardLimit = 120;
+    public const int MinimumLimit = 1;
+    public const int MaximumLimit = 500;
 
     public bool Show { get; init; }
     public bool Enforce { get; init; }

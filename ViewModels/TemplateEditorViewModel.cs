@@ -109,7 +109,7 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
         get => _softLineLengthLimit;
         set
         {
-            var limit = Math.Max(1, value);
+            var limit = ClampLimit(value);
             if (_softLineLengthLimit == limit)
             {
                 return;
@@ -132,7 +132,7 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
         get => _hardLineLengthLimit;
         set
         {
-            var limit = Math.Max(1, value);
+            var limit = ClampLimit(value);
             if (limit < SoftLineLengthLimit)
             {
                 if (_hardLineLengthLimit == _softLineLengthLimit)
@@ -252,6 +252,9 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
             _isApplyingDocument = false;
         }
     }
+
+    private static int ClampLimit(int value) =>
+        Math.Clamp(value, LineLengthSettings.MinimumLimit, LineLengthSettings.MaximumLimit);
 
     private LineLengthSettings CurrentLineLengthSettings() =>
         new()
