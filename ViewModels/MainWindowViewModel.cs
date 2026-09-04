@@ -19,6 +19,7 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
     private readonly IUserInteractionService _interactionService;
     private readonly IApplicationService _applicationService;
     private readonly TemplateEditorViewModel _emptyEditor = new();
+    private readonly IObservable<bool> _canEditDocument;
     private DocumentTabViewModel? _selectedDocument;
 
     [Reactive(SetModifier = AccessModifier.Private)]
@@ -49,6 +50,7 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
         _storageService = storageService;
         _interactionService = interactionService;
         _applicationService = applicationService;
+        _canEditDocument = this.WhenAnyValue(viewModel => viewModel.SelectedDocument!.CanEdit);
 
         AddNewDocument();
     }
@@ -201,25 +203,25 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
     [ReactiveCommand]
     private async Task CloseTabAsync(DocumentTabViewModel? document) => await CloseDocumentAsync(document);
 
-    [ReactiveCommand]
-    private void InsertTemplate() => Editor?.InsertTemplate();
+    [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
+    private void InsertTemplate() => Editor.InsertTemplate();
 
-    [ReactiveCommand]
-    private void Undo() => Editor?.Undo();
+    [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
+    private void Undo() => Editor.Undo();
 
-    [ReactiveCommand]
-    private void Redo() => Editor?.Redo();
+    [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
+    private void Redo() => Editor.Redo();
 
-    [ReactiveCommand]
+    [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
     private void Cut() => Editor.Cut();
 
     [ReactiveCommand]
     private void Copy() => Editor.Copy();
 
-    [ReactiveCommand]
+    [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
     private void Paste() => Editor.Paste();
 
-    [ReactiveCommand]
+    [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
     private void Delete() => Editor.Delete();
 
     [ReactiveCommand]
@@ -260,11 +262,11 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
     private void ToggleCurrentLineHighlight() =>
         IsCurrentLineHighlightEnabled = !IsCurrentLineHighlightEnabled;
 
-    [ReactiveCommand]
+    [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
     private void ToggleLineLengthIndicators() =>
         Editor.ShowLineLengthIndicators = !Editor.ShowLineLengthIndicators;
 
-    [ReactiveCommand]
+    [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
     private void ToggleHardLineLengthLimit() =>
         Editor.EnforceHardLineLengthLimit = !Editor.EnforceHardLineLengthLimit;
 

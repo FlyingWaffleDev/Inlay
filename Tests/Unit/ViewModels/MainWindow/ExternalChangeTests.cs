@@ -1,9 +1,49 @@
+using System.Windows.Input;
 using Xunit;
 
 namespace Inlay.Tests;
 
 public sealed class ExternalChangeTests
 {
+    [Fact]
+    public async Task ExternalChangesDisableEditCommands()
+    {
+        var context = await OpenDocument();
+        var viewModel = context.Test.ViewModel;
+        var editingCommands = new (string Name, ICommand Command)[]
+        {
+            ("InsertTemplate", viewModel.InsertTemplateCommand),
+            ("Undo", viewModel.UndoCommand),
+            ("Redo", viewModel.RedoCommand),
+            ("Cut", viewModel.CutCommand),
+            ("Paste", viewModel.PasteCommand),
+            ("Delete", viewModel.DeleteCommand),
+            ("ToggleLineLengthIndicators", viewModel.ToggleLineLengthIndicatorsCommand),
+            ("ToggleHardLineLengthLimit", viewModel.ToggleHardLineLengthLimitCommand)
+        };
+
+        Assert.All(editingCommands, entry => Assert.True(entry.Command.CanExecute(null), entry.Name));
+
+        context.File.SetDocumentText("Changed elsewhere");
+        viewModel.CheckSelectedDocumentForExternalChanges();
+
+        Assert.False(viewModel.SelectedDocument!.CanEdit);
+        Assert.All(editingCommands, entry => Assert.False(entry.Command.CanExecute(null), entry.Name));
+
+        Assert.True(((ICommand)viewModel.CopyCommand).CanExecute(null));
+        Assert.True(((ICommand)viewModel.SaveCommand).CanExecute(null));
+        Assert.True(((ICommand)viewModel.ReloadExternalChangesCommand)
+            .CanExecute(viewModel.SelectedDocument));
+        Assert.True(((ICommand)viewModel.IgnoreExternalChangesCommand)
+            .CanExecute(viewModel.SelectedDocument));
+
+        await MainWindowViewModelTestContext.ObserveAsync(
+            viewModel.IgnoreExternalChangesCommand.Execute(viewModel.SelectedDocument),
+            TestContext.Current.CancellationToken);
+
+        Assert.All(editingCommands, entry => Assert.True(entry.Command.CanExecute(null), entry.Name));
+    }
+
     [Fact]
     public async Task FocusCheckShowsInlineExternalChangeChoiceAndMarksDocumentDirty()
     {

@@ -12,11 +12,12 @@ namespace Inlay.Tests;
 
 internal static class MainWindowTestHost
 {
-    public static (MainWindow Window, MainWindowViewModel ViewModel) CreateWindow()
+    public static (MainWindow Window, MainWindowViewModel ViewModel) CreateWindow(
+        IDocumentStorageService? storageService = null)
     {
         var viewModel = new MainWindowViewModel(
             new JsonTemplateDocumentService(),
-            new NullStorageService(),
+            storageService ?? new NullStorageService(),
             new NullInteractionService(),
             new FakeApplicationService());
         var window = new MainWindow(viewModel);
