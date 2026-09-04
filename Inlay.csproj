@@ -45,6 +45,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Inlay.Tests" />
+    <InternalsVisibleTo Include="HeroCapture" />
     <AvaloniaResource Include="Assets/**" />
   </ItemGroup>
 </Project>

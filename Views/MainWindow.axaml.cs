@@ -181,6 +181,8 @@ internal sealed partial class MainWindow : Window
         await viewModel.CloseDocumentAsync(document);
     }
 
+    internal void ApproveApplicationExit() => _closeApproved = true;
+
     protected override async void OnClosing(WindowClosingEventArgs e)
     {
         if (_closeApproved || DataContext is not MainWindowViewModel viewModel || !viewModel.IsDirty)

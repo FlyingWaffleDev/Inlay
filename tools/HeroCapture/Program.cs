@@ -49,16 +49,16 @@ internal sealed class CaptureApp(
     public override void Initialize()
     {
         RequestedThemeVariant = theme;
-        Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Inlay.Tests"))
+        Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Inlay"))
         {
             Source = new Uri("avares://Inlay/Styles/ThemeResources.axaml")
         });
         Styles.Add(new FluentTheme());
-        Styles.Add(new StyleInclude(new Uri("avares://Inlay.Tests"))
+        Styles.Add(new StyleInclude(new Uri("avares://Inlay"))
         {
             Source = new Uri("avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml")
         });
-        Styles.Add(new StyleInclude(new Uri("avares://Inlay.Tests"))
+        Styles.Add(new StyleInclude(new Uri("avares://Inlay"))
         {
             Source = new Uri("avares://Inlay/Styles/InlayStyles.axaml")
         });
@@ -212,5 +212,5 @@ internal sealed class NullInteractionService : IUserInteractionService
 internal sealed class NullApplicationService : IApplicationService
 {
     public void OpenNewWindow() { }
-    public void Exit() { }
+    public Task ExitAsync() => Task.CompletedTask;
 }

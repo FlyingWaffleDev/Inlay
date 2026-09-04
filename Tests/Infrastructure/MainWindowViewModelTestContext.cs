@@ -41,7 +41,11 @@ internal sealed class FakeApplicationService : IApplicationService
     public int ExitCount { get; private set; }
 
     public void OpenNewWindow() => OpenNewWindowCount++;
-    public void Exit() => ExitCount++;
+    public Task ExitAsync()
+    {
+        ExitCount++;
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class FakeEditorAdapter : ITemplateEditorAdapter

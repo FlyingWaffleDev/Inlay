@@ -142,7 +142,7 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
     private void NewWindow() => _applicationService.OpenNewWindow();
 
     [ReactiveCommand]
-    private void Exit() => _applicationService.Exit();
+    private async Task ExitAsync() => await _applicationService.ExitAsync();
 
     [ReactiveCommand]
     private async Task OpenAsync()

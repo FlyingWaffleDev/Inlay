@@ -27,23 +27,70 @@ public sealed class ApplicationBehaviorTests
     }
 
     [AvaloniaFact]
-    public void ExitClosesOnlyTheOwningWindow()
+    public async Task ExitClosesEveryOpenWindow()
     {
         var owner = new Window();
         var otherWindow = new Window();
-        var service = new AvaloniaApplicationService(owner, () => new Window());
+        var service = new AvaloniaApplicationService(
+            owner,
+            () => new Window(),
+            () => [owner, otherWindow]);
         owner.Show();
         otherWindow.Show();
 
-        service.Exit();
         try
         {
+            await service.ExitAsync();
+
             Assert.False(owner.IsVisible);
-            Assert.True(otherWindow.IsVisible);
+            Assert.False(otherWindow.IsVisible);
         }
         finally
         {
+            owner.Close();
             otherWindow.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task CancelingAnUnsavedPromptKeepsEveryWindowOpen()
+    {
+        var firstInteraction = new FakeInteractionService
+        {
+            UnsavedChoice = UnsavedChoice.Discard
+        };
+        var secondInteraction = new FakeInteractionService
+        {
+            UnsavedChoice = UnsavedChoice.Cancel
+        };
+        var firstWindow = CreateWindow(firstInteraction);
+        var secondWindow = CreateWindow(secondInteraction);
+        firstWindow.Show();
+        secondWindow.Show();
+        var firstViewModel = Assert.IsType<MainWindowViewModel>(firstWindow.DataContext);
+        var secondViewModel = Assert.IsType<MainWindowViewModel>(secondWindow.DataContext);
+        firstViewModel.Editor.ReportContentChanged();
+        secondViewModel.Editor.ReportContentChanged();
+        var service = new AvaloniaApplicationService(
+            firstWindow,
+            () => new Window(),
+            () => [firstWindow, secondWindow]);
+
+        try
+        {
+            await service.ExitAsync();
+
+            Assert.True(firstWindow.IsVisible);
+            Assert.True(secondWindow.IsVisible);
+            Assert.Equal(1, firstInteraction.UnsavedConfirmationCount);
+            Assert.Equal(1, secondInteraction.UnsavedConfirmationCount);
+        }
+        finally
+        {
+            firstWindow.ApproveApplicationExit();
+            secondWindow.ApproveApplicationExit();
+            firstWindow.Close();
+            secondWindow.Close();
         }
     }
 
@@ -70,4 +117,11 @@ public sealed class ApplicationBehaviorTests
             secondWindow.Close();
         }
     }
+
+    private static MainWindow CreateWindow(FakeInteractionService interaction) =>
+        new(new MainWindowViewModel(
+            new JsonTemplateDocumentService(),
+            new FakeStorageService(),
+            interaction,
+            new FakeApplicationService()));
 }
