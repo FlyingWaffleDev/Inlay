@@ -39,15 +39,22 @@ internal sealed class JsonTemplateDocumentService : ITemplateDocumentService
             throw new InvalidDataException("The document has null line length settings.");
         }
 
-        if (document.LineLength.SoftLimit < 1)
+        if (document.LineLength.SoftLimit < LineLengthSettings.MinimumLimit)
         {
-            throw new InvalidDataException("The soft line length limit must be at least 1.");
+            throw new InvalidDataException(
+                $"The soft line length limit must be at least {LineLengthSettings.MinimumLimit}.");
         }
 
         if (document.LineLength.HardLimit < document.LineLength.SoftLimit)
         {
             throw new InvalidDataException(
                 "The hard line length limit cannot be lower than the soft limit.");
+        }
+
+        if (document.LineLength.HardLimit > LineLengthSettings.MaximumLimit)
+        {
+            throw new InvalidDataException(
+                $"The hard line length limit cannot exceed {LineLengthSettings.MaximumLimit}.");
         }
 
         foreach (var part in document.Content)
@@ -86,14 +93,19 @@ internal sealed class JsonTemplateDocumentService : ITemplateDocumentService
         TemplateDocument document,
         CancellationToken cancellationToken = default)
     {
+        // Serialize first so a failure here cannot truncate the existing file.
+        using var buffer = new MemoryStream();
+        await JsonSerializer.SerializeAsync(buffer, document, Options, cancellationToken)
+            .ConfigureAwait(false);
+
         if (stream.CanSeek)
         {
             stream.Position = 0;
             stream.SetLength(0);
         }
 
-        await JsonSerializer.SerializeAsync(stream, document, Options, cancellationToken)
-            .ConfigureAwait(false);
+        buffer.Position = 0;
+        await buffer.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 }

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Inlay.Controls"
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        xmlns:models="clr-namespace:Inlay.Models"
         xmlns:vm="clr-namespace:Inlay.ViewModels"
         x:Class="Inlay.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -199,7 +200,7 @@
                     <NumericUpDown x:Name="SoftLineLengthInput"
                                    Grid.Row="0" Grid.Column="1"
                                    MinWidth="140"
-                                   Minimum="1"
+                                   Minimum="{Binding Source={x:Static models:LineLengthSettings.MinimumLimit}}"
                                    Maximum="{Binding Editor.HardLineLengthLimit}"
                                    Increment="1" FormatString="0"
                                    Value="{Binding Editor.SoftLineLengthLimit, Mode=TwoWay}" />
@@ -207,8 +208,8 @@
                     <NumericUpDown x:Name="HardLineLengthInput"
                                    Grid.Row="1" Grid.Column="1"
                                    MinWidth="140"
-                                   Minimum="1"
-                                   Maximum="500"
+                                   Minimum="{Binding Source={x:Static models:LineLengthSettings.MinimumLimit}}"
+                                   Maximum="{Binding Source={x:Static models:LineLengthSettings.MaximumLimit}}"
                                    Increment="1" FormatString="0"
                                    Value="{Binding Editor.HardLineLengthLimit, Mode=TwoWay}" />
                   </Grid>

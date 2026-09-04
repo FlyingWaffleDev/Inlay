@@ -1,3 +1,4 @@
+using Inlay.Models;
 using Inlay.ViewModels;
 using Xunit;
 
@@ -39,5 +40,30 @@ public sealed class LineLengthSettingsTests
 
         Assert.Equal(79, editor.SoftLineLengthLimit);
         Assert.Equal(79, editor.HardLineLengthLimit);
+    }
+
+    [Fact]
+    public void LimitsAreClampedToTheRangeTheDocumentFormatAllows()
+    {
+        var editor = new TemplateEditorViewModel();
+
+        editor.HardLineLengthLimit = LineLengthSettings.MaximumLimit + 1_000;
+        Assert.Equal(LineLengthSettings.MaximumLimit, editor.HardLineLengthLimit);
+
+        editor.SoftLineLengthLimit = LineLengthSettings.MaximumLimit + 1_000;
+        Assert.Equal(LineLengthSettings.MaximumLimit, editor.SoftLineLengthLimit);
+
+        editor.SoftLineLengthLimit = -5;
+        Assert.Equal(LineLengthSettings.MinimumLimit, editor.SoftLineLengthLimit);
+
+        var exported = editor.ExportDocument().LineLength;
+        Assert.InRange(
+            exported.HardLimit,
+            LineLengthSettings.MinimumLimit,
+            LineLengthSettings.MaximumLimit);
+        Assert.InRange(
+            exported.SoftLimit,
+            LineLengthSettings.MinimumLimit,
+            exported.HardLimit);
     }
 }

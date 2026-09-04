@@ -60,6 +60,7 @@ public sealed class JsonTemplateDocumentServiceTests
     [Theory]
     [InlineData(0, 120)]
     [InlineData(80, 79)]
+    [InlineData(80, 501)]
     public async Task LoadRejectsInvalidLineLengths(int softLimit, int hardLimit)
     {
         var json = $$"""

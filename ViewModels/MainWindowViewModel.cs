@@ -165,7 +165,7 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
 
             await using var stream = await file.OpenReadAsync();
             var document = await _documentService.LoadAsync(stream);
-            if (Documents.Count == 1 && Documents[0].IsEmptyUntitled)
+            if (Documents.Count == 1 && Documents[0].IsEmptyUntitled())
             {
                 ReplaceDocument(Documents[0], document, file);
             }

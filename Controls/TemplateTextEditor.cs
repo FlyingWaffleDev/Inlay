@@ -303,9 +303,7 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
     public void InsertTemplate()
     {
         EnsureGenerator();
-        var offset = SelectionLength > 0
-            ? Math.Min(SelectionStart, SelectionStart + SelectionLength)
-            : CaretOffset;
+        var offset = SelectionLength > 0 ? SelectionStart : CaretOffset;
         Document.UndoStack.StartUndoGroup();
         try
         {

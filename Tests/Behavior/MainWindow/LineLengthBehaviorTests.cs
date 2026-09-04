@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Inlay.Models;
 using Xunit;
 
 namespace Inlay.Tests;
@@ -21,9 +22,15 @@ public sealed class LineLengthBehaviorTests
 
             window.FindControl<CheckBox>("ShowLineLengthLimitsToggle")!.IsChecked = true;
             window.FindControl<CheckBox>("EnforceLineLengthLimitsToggle")!.IsChecked = true;
-            window.FindControl<NumericUpDown>("SoftLineLengthInput")!.Value = 88;
-            window.FindControl<NumericUpDown>("HardLineLengthInput")!.Value = 108;
+            var softInput = window.FindControl<NumericUpDown>("SoftLineLengthInput")!;
+            var hardInput = window.FindControl<NumericUpDown>("HardLineLengthInput")!;
+            softInput.Value = 88;
+            hardInput.Value = 108;
             Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(LineLengthSettings.MinimumLimit, softInput.Minimum);
+            Assert.Equal(LineLengthSettings.MinimumLimit, hardInput.Minimum);
+            Assert.Equal(LineLengthSettings.MaximumLimit, hardInput.Maximum);
 
             var editor = MainWindowTestHost.FindEditor(window);
             Assert.Equal(

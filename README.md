@@ -24,6 +24,12 @@ Files use JSON. Text and templates are stored as ordered parts, so template loca
 ```json
 {
   "formatVersion": 1,
+  "lineLength": {
+    "show": false,
+    "enforce": false,
+    "softLimit": 80,
+    "hardLimit": 120
+  },
   "content": [
     { "type": "text", "text": "Hello " },
     {
@@ -36,7 +42,9 @@ Files use JSON. Text and templates are stored as ordered parts, so template loca
 }
 ```
 
-`selectedIndex` is `-1` when the template has no active choice. The editor displays `_____` in that case.
+`selectedIndex` is `-1` when the template has no active choice. The editor displays `_____` in that case. Choices cannot be empty strings.
+
+`lineLength` is per document and optional, defaulting to the values above. `show` draws the limit columns and `enforce` wraps the text at `hardLimit`. Both limits run from 1 to 500, and `hardLimit` cannot be below `softLimit`.
 
 
 ## License

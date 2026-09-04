@@ -71,6 +71,7 @@ internal sealed class TemplateTextElement(
         CaretPositioningMode mode)
     {
         // Keep the template atomic while allowing caret stops at both edges.
+        // VisualLineText would otherwise stop inside it on every word boundary.
         var start = VisualColumn;
         var end = VisualColumn + VisualLength;
         if (direction == AvaloniaEdit.Document.LogicalDirection.Backward)
