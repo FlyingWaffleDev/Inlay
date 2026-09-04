@@ -161,9 +161,13 @@ public sealed class TemplateTextElementGeneratorTests
         AssertTemplateState(editor, generator, viewModel, ["Two", "Three"], 1);
     }
 
-    [AvaloniaFact]
-    public void DeleteAndBackspaceDoNotSplitATemplate()
+    [AvaloniaTheory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(6)]
+    public void DeleteAndBackspaceDoNotSplitATemplate(int choiceLength)
     {
+        var choice = new string('C', choiceLength);
         var editor = new TextEditor
         {
             Text = "BeforeAfter",
@@ -172,7 +176,7 @@ public sealed class TemplateTextElementGeneratorTests
         };
         var generator = AttachGenerator(editor);
         var offset = "Before".Length;
-        generator.AddTemplate(offset, ["Choice"], 0);
+        generator.AddTemplate(offset, [choice], 0);
         var window = new Window { Content = editor };
         window.Show();
         window.UpdateLayout();
@@ -182,11 +186,48 @@ public sealed class TemplateTextElementGeneratorTests
             Assert.True(editor.TextArea.Focus());
             editor.CaretOffset = offset;
             Press(window, Key.Delete);
-            editor.CaretOffset = offset + "Choice".Length;
+            editor.CaretOffset = offset + choice.Length;
             Press(window, Key.Back);
 
-            Assert.Equal("BeforeChoiceAfter", editor.Text);
-            Assert.Equal(["Choice"], generator.ExportDocument().Content[1].Options);
+            Assert.Equal($"Before{choice}After", editor.Text);
+            Assert.Equal([choice], generator.ExportDocument().Content[1].Options);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(6)]
+    public void DeleteAndBackspaceStillEditTheTextAroundATemplate(int choiceLength)
+    {
+        var choice = new string('C', choiceLength);
+        var editor = new TextEditor
+        {
+            Text = "BeforeAfter",
+            Width = 600,
+            Height = 400
+        };
+        var generator = AttachGenerator(editor);
+        var offset = "Before".Length;
+        generator.AddTemplate(offset, [choice], 0);
+        var window = new Window { Content = editor };
+        window.Show();
+        window.UpdateLayout();
+
+        try
+        {
+            Assert.True(editor.TextArea.Focus());
+            editor.CaretOffset = offset + choice.Length;
+            Press(window, Key.Delete);
+            editor.CaretOffset = offset;
+            Press(window, Key.Back);
+
+            Assert.Equal($"Befor{choice}fter", editor.Text);
+            Assert.Equal([choice], generator.ExportDocument().Content[1].Options);
         }
         finally
         {
