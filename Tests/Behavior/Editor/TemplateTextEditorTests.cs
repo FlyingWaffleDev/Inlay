@@ -1,6 +1,7 @@
-using Avalonia.Headless.XUnit;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
+using Avalonia.Headless.XUnit;
 using AvaloniaEdit.Rendering;
 using Inlay.Controls;
 using Inlay.Models;
@@ -40,6 +41,45 @@ public sealed class TemplateTextEditorTests
         Assert.Contains(
             editor.ExportDocument().Content,
             part => part.Type == DocumentPartKind.Template);
+    }
+
+    [AvaloniaFact]
+    public void InsertingBeforeATemplateLeavesTheCaretBetweenThem()
+    {
+        var editor = new TemplateTextEditor
+        {
+            Width = 600,
+            Height = 400,
+            EditorState = new TemplateEditorViewModel()
+        };
+        editor.LoadDocument(new TemplateDocument
+        {
+            Content = [DocumentPart.Template([], -1)]
+        });
+        var window = new Window { Content = editor };
+        window.Show();
+        window.UpdateLayout();
+
+        try
+        {
+            editor.CaretOffset = 0;
+            editor.InsertTemplate();
+
+            Assert.Equal("__________", editor.Text);
+            Assert.Equal(TemplateTextElement.PlaceholderText.Length, editor.CaretOffset);
+            Assert.True(editor.TextArea.IsFocused);
+
+            window.KeyTextInput("X");
+
+            Assert.Equal("_____X_____", editor.Text);
+            Assert.Equal(
+                [DocumentPartKind.Template, DocumentPartKind.Text, DocumentPartKind.Template],
+                editor.ExportDocument().Content.Select(part => part.Type));
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     [AvaloniaFact]

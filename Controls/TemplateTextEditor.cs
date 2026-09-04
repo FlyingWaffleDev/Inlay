@@ -321,8 +321,10 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
             Document.UndoStack.EndUndoGroup();
         }
 
-        CaretOffset = offset + TemplateTextElement.PlaceholderText.Length;
-        Focus();
+        var caretOffset = offset + TemplateTextElement.PlaceholderText.Length;
+        Select(caretOffset, 0);
+        TextArea.Focus();
+        TextArea.Caret.BringCaretToView();
         UpdateSnapshot();
     }
 

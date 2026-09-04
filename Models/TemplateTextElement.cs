@@ -80,7 +80,34 @@ internal sealed class TemplateTextElement : VisualLineText
     public override int GetNextCaretPosition(
         int visualColumn,
         AvaloniaEdit.Document.LogicalDirection direction,
-        CaretPositioningMode mode) => -1;
+        CaretPositioningMode mode)
+    {
+        // Keep the template atomic while allowing caret stops at both edges.
+        var start = VisualColumn;
+        var end = VisualColumn + VisualLength;
+        if (direction == AvaloniaEdit.Document.LogicalDirection.Backward)
+        {
+            if (visualColumn > end &&
+                mode is not CaretPositioningMode.WordStart and
+                    not CaretPositioningMode.WordStartOrSymbol)
+            {
+                return end;
+            }
+
+            return visualColumn > start ? start : -1;
+        }
+
+        if (visualColumn < start)
+        {
+            return start;
+        }
+
+        return visualColumn < end &&
+               mode is not CaretPositioningMode.WordStart and
+                   not CaretPositioningMode.WordStartOrSymbol
+            ? end
+            : -1;
+    }
 
     public override bool CanSplit => false;
 

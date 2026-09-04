@@ -23,6 +23,7 @@
     <KeyBinding Gesture="Ctrl+X" Command="{Binding CutCommand}" />
     <KeyBinding Gesture="Ctrl+C" Command="{Binding CopyCommand}" />
     <KeyBinding Gesture="Ctrl+V" Command="{Binding PasteCommand}" />
+    <KeyBinding Gesture="Ctrl+T" Command="{Binding InsertTemplateCommand}" />
     <KeyBinding Gesture="Ctrl+A" Command="{Binding SelectAllCommand}" />
     <KeyBinding Gesture="Ctrl+F" Command="{Binding FindCommand}" />
     <KeyBinding Gesture="Ctrl+H" Command="{Binding ReplaceCommand}" />
@@ -58,6 +59,9 @@
                           IsEnabled="{Binding Editor.CanUndo}" />
           <NativeMenuItem Header="Redo" Gesture="Ctrl+Y" Command="{Binding RedoCommand}"
                           IsEnabled="{Binding Editor.CanRedo}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Insert Template" Gesture="Ctrl+T"
+                          Command="{Binding InsertTemplateCommand}" />
           <NativeMenuItemSeparator />
           <NativeMenuItem Header="Cut" Gesture="Ctrl+X" Command="{Binding CutCommand}"
                           IsEnabled="{Binding Editor.CanCut}" />

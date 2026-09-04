@@ -17,7 +17,7 @@ public sealed class MainWindowCommandTests
     [AvaloniaFact]
     public void NativeMenusBindApplicationCommands()
     {
-        var (window, _) = MainWindowTestHost.CreateWindow();
+        var (window, viewModel) = MainWindowTestHost.CreateWindow();
         try
         {
             var menu = Assert.IsType<NativeMenu>(NativeMenu.GetMenu(window));
@@ -31,6 +31,10 @@ public sealed class MainWindowCommandTests
             Assert.Contains(
                 editMenu.Items.OfType<NativeMenuItem>(),
                 item => item.Header == "Font");
+            var insertTemplateItem = editMenu.Items.OfType<NativeMenuItem>()
+                .Single(item => item.Header == "Insert Template");
+            Assert.Equal("Ctrl+T", insertTemplateItem.Gesture?.ToString());
+            Assert.Same(viewModel.InsertTemplateCommand, insertTemplateItem.Command);
             Assert.Single(window.GetVisualDescendants().OfType<NativeMenuBar>());
         }
         finally
@@ -62,6 +66,7 @@ public sealed class MainWindowCommandTests
                 ["Ctrl+X"] = viewModel.CutCommand,
                 ["Ctrl+C"] = viewModel.CopyCommand,
                 ["Ctrl+V"] = viewModel.PasteCommand,
+                ["Ctrl+T"] = viewModel.InsertTemplateCommand,
                 ["Ctrl+A"] = viewModel.SelectAllCommand,
                 ["Ctrl+F"] = viewModel.FindCommand,
                 ["Ctrl+H"] = viewModel.ReplaceCommand,
@@ -131,6 +136,33 @@ public sealed class MainWindowCommandTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal("ac", editor.Text);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void InsertTemplateShortcutInsertsAtTheCaretAndKeepsTypingThere()
+    {
+        var (window, _) = MainWindowTestHost.CreateWindow();
+        try
+        {
+            var editor = MainWindowTestHost.FindEditor(window);
+            editor.Text = "ab";
+            editor.CaretOffset = 1;
+            Assert.True(editor.TextArea.Focus());
+
+            PressShortcut(window, Key.T);
+
+            Assert.Equal("a_____b", editor.Text);
+            Assert.Equal(1 + TemplateTextElement.PlaceholderText.Length, editor.CaretOffset);
+            Assert.True(editor.TextArea.IsFocused);
+
+            window.KeyTextInput("X");
+
+            Assert.Equal("a_____Xb", editor.Text);
         }
         finally
         {

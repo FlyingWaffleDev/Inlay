@@ -195,6 +195,48 @@ public sealed class TemplateTextElementGeneratorTests
     }
 
     [AvaloniaFact]
+    public void ArrowKeysStopBetweenAdjacentTemplates()
+    {
+        var editor = new TextEditor
+        {
+            Width = 600,
+            Height = 400
+        };
+        var generator = AttachGenerator(editor);
+        generator.AddTemplate(0, ["One"], 0);
+        generator.AddTemplate("One".Length, ["Two"], 0);
+        var window = new Window { Content = editor };
+        window.Show();
+        window.UpdateLayout();
+
+        try
+        {
+            Assert.True(editor.TextArea.Focus());
+            editor.CaretOffset = 0;
+
+            Press(window, Key.Right);
+            Assert.Equal("One".Length, editor.CaretOffset);
+
+            Press(window, Key.Right);
+            Assert.Equal("OneTwo".Length, editor.CaretOffset);
+
+            Press(window, Key.Left);
+            Assert.Equal("One".Length, editor.CaretOffset);
+
+            window.KeyTextInput("X");
+
+            Assert.Equal("OneXTwo", editor.Text);
+            Assert.Equal(
+                [DocumentPartKind.Template, DocumentPartKind.Text, DocumentPartKind.Template],
+                generator.ExportDocument().Content.Select(part => part.Type));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void DeletingASelectionAcrossATemplateDissolvesItAndUndoRestoresIt()
     {
         var editor = new TextEditor
