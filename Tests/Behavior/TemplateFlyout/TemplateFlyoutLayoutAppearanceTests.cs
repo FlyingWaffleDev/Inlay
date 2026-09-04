@@ -64,15 +64,15 @@ public sealed class TemplateFlyoutLayoutAppearanceTests
             var clickPosition = new Point(125, 75);
             var expectedPosition = editor.TranslatePoint(clickPosition, window)!.Value;
 
-            template.CaptureFlyoutPosition(editor, clickPosition);
-            var initialPosition = template.FlyoutPosition;
+            generator.CaptureFlyoutPosition(template, editor, clickPosition);
+            var initialAnchor = generator.FlyoutAnchorRectangle;
             template.Options.Add("Choice");
 
-            Assert.Equal(PlacementMode.Custom, template.FlyoutPlacement);
+            Assert.Equal(PlacementMode.Custom, generator.FlyoutPlacement);
             Assert.NotEqual(clickPosition, expectedPosition);
-            Assert.Equal(new Rect(expectedPosition, new Size(1, 1)), template.FlyoutAnchorRectangle);
-            Assert.Equal(expectedPosition, initialPosition);
-            Assert.Equal(initialPosition, template.FlyoutPosition);
+            Assert.Equal(new Rect(expectedPosition, new Size(1, 1)), initialAnchor);
+            Assert.Equal(expectedPosition, initialAnchor.TopLeft);
+            Assert.Equal(initialAnchor, generator.FlyoutAnchorRectangle);
         }
         finally
         {
