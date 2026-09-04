@@ -108,6 +108,42 @@ public sealed class JsonTemplateDocumentServiceTests
     }
 
     [Fact]
+    public async Task LoadRejectsAnEmptySelectedChoice()
+    {
+        const string json = """
+            {
+              "formatVersion": 1,
+              "content": [
+                { "type": "template", "options": [""], "selectedIndex": 0 }
+              ]
+            }
+            """;
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(
+            () => LoadJsonAsync(json));
+
+        Assert.Contains("cannot be empty", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task LoadRejectsEmptyAndNullUnselectedChoices()
+    {
+        const string json = """
+            {
+              "formatVersion": 1,
+              "content": [
+                { "type": "template", "options": ["one", "", null], "selectedIndex": 0 }
+              ]
+            }
+            """;
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(
+            () => LoadJsonAsync(json));
+
+        Assert.Contains("cannot be empty", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task LoadRejectsAnUnsupportedFormatVersion()
     {
         const string json = """

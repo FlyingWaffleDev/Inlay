@@ -70,6 +70,11 @@ internal sealed class JsonTemplateDocumentService : ITemplateDocumentService
                 {
                     throw new InvalidDataException("A template has an invalid selectedIndex value.");
                 }
+
+                if (part.Options?.Exists(string.IsNullOrEmpty) == true)
+                {
+                    throw new InvalidDataException("A template choice cannot be empty.");
+                }
             }
         }
 
