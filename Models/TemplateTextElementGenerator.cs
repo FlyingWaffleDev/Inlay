@@ -537,9 +537,7 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
             return;
         }
 
-        template.Anchor.MovementType = caret.VisualColumn >= template.Anchor.Column
-            ? AnchorMovementType.BeforeInsertion
-            : AnchorMovementType.AfterInsertion;
+        template.Anchor.MovementType = AnchorMovementType.AfterInsertion;
     }
 
     private void OnCaretPositionChanged(object? sender, EventArgs e) =>
@@ -547,23 +545,19 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 
     private void OnEditorKeyDown(object? sender, KeyEventArgs e)
     {
-        if (!_editor.TextArea.Selection.IsEmpty)
+        if (e.Key is not (Key.Back or Key.Delete) || !_editor.TextArea.Selection.IsEmpty)
         {
             return;
         }
 
-        var caret = _editor.TextArea.Caret;
-        foreach (var template in _templates.Where(item =>
-                     item.Anchor.Offset == caret.Offset || item.Anchor.Offset + item.Length == caret.Offset))
+        var caretOffset = _editor.TextArea.Caret.Offset;
+        var wouldSplitTemplate = _templates.Any(template =>
+            caretOffset == (e.Key == Key.Back
+                ? template.Anchor.Offset + template.Length
+                : template.Anchor.Offset));
+        if (wouldSplitTemplate)
         {
-            var visuallyBefore = caret.VisualColumn < template.Anchor.Column;
-            var visuallyAfter = caret.VisualColumn > template.Anchor.Column;
-            if ((e.Key == Key.Back && !visuallyBefore) ||
-                (e.Key == Key.Delete && !visuallyAfter))
-            {
-                e.Handled = true;
-                return;
-            }
+            e.Handled = true;
         }
     }
 
