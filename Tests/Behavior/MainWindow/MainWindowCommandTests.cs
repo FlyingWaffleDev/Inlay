@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
@@ -265,6 +266,58 @@ public sealed class MainWindowCommandTests
             }
         }
     }
+
+    [AvaloniaFact]
+    public void ExternalChangesDisableTheEditingFunctionality()
+    {
+        var file = new MemoryDocumentFile("opened.itd");
+        file.SetDocumentText("Original");
+        var storage = new FakeStorageService { OpenFile = file };
+        var (window, viewModel) = MainWindowTestHost.CreateWindow(storage);
+        try
+        {
+            TestCommand.Execute(viewModel.OpenCommand.Execute());
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            var insertButton = ToolbarButton(window, "Insert Template");
+            var editor = MainWindowTestHost.FindEditor(window);
+            Assert.True(insertButton.IsEffectivelyEnabled);
+
+            file.SetDocumentText("Changed elsewhere");
+            viewModel.CheckSelectedDocumentForExternalChanges();
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            var textBeforeShortcut = editor.Text;
+            Assert.False(viewModel.SelectedDocument!.CanEdit);
+            Assert.False(insertButton.IsEffectivelyEnabled);
+
+            PressShortcut(window, Key.T);
+
+            Assert.Equal(textBeforeShortcut, editor.Text);
+
+            TestCommand.Execute(
+                viewModel.IgnoreExternalChangesCommand.Execute(viewModel.SelectedDocument));
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            Assert.True(insertButton.IsEffectivelyEnabled);
+
+            PressShortcut(window, Key.T);
+
+            Assert.NotEqual(textBeforeShortcut, editor.Text);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static Button ToolbarButton(MainWindow window, string automationName) =>
+        window.GetVisualDescendants()
+            .OfType<Button>()
+            .Single(button => AutomationProperties.GetName(button) == automationName);
 
     private static void PressShortcut(MainWindow window, Key key)
     {

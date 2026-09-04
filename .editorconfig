@@ -28,3 +28,7 @@ dotnet_diagnostic.CA2007.severity = none
 # xUnit requires public test classes and preserves its own synchronization context.
 dotnet_diagnostic.CA1515.severity = none
 dotnet_diagnostic.CA2007.severity = none
+
+[Tests/Infrastructure/ReactiveUiTestInitializer.cs]
+# Tests build no AppBuilder, so the Attribute is required.
+dotnet_diagnostic.CA2255.severity = none
