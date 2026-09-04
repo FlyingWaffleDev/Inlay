@@ -64,6 +64,12 @@ internal sealed class FakeEditorAdapter : ITemplateEditorAdapter
     public int ReplaceCount { get; private set; }
 
     public TemplateDocument ExportDocument() => Document;
+    
+    public ITemplateEditorSession CaptureSession() =>
+        new SerializedTemplateEditorSession(Document);
+
+    public void RestoreSession(ITemplateEditorSession session) =>
+        LoadDocument(session.ExportDocument());
 
     public void LoadDocument(TemplateDocument document)
     {

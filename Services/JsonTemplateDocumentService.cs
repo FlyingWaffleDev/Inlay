@@ -83,6 +83,7 @@ internal sealed class JsonTemplateDocumentService : ITemplateDocumentService
     {
         if (stream.CanSeek)
         {
+            stream.Position = 0;
             stream.SetLength(0);
         }
 

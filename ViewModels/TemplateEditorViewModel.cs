@@ -15,11 +15,25 @@ internal readonly record struct EditorSnapshot(
     bool CanCopy = false,
     bool CanPaste = false,
     bool CanDelete = false,
-    bool CanSelectAll = false);
+    bool CanSelectAll = false,
+    string PreviewText = "");
+
+internal interface ITemplateEditorSession
+{
+    TemplateDocument ExportDocument();
+}
+
+internal sealed class SerializedTemplateEditorSession(TemplateDocument document)
+    : ITemplateEditorSession
+{
+    public TemplateDocument ExportDocument() => document;
+}
 
 internal interface ITemplateEditorAdapter
 {
     TemplateDocument ExportDocument();
+    ITemplateEditorSession CaptureSession();
+    void RestoreSession(ITemplateEditorSession session);
     void LoadDocument(TemplateDocument document);
     void InsertTemplate();
     void Undo();
@@ -36,7 +50,7 @@ internal interface ITemplateEditorAdapter
 internal sealed partial class TemplateEditorViewModel : ReactiveObject
 {
     private ITemplateEditorAdapter? _adapter;
-    private TemplateDocument? _pendingDocument;
+    private ITemplateEditorSession? _detachedSession;
     private bool _isApplyingDocument;
     private bool _showLineLengthIndicators;
     private bool _enforceHardLineLengthLimit;
@@ -66,6 +80,9 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
 
     [Reactive(SetModifier = AccessModifier.Private)]
     private bool _canSelectAll;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private string _previewText = string.Empty;
 
     public event Action? ContentChanged;
 
@@ -143,10 +160,10 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
     public void Attach(ITemplateEditorAdapter adapter)
     {
         _adapter = adapter;
-        if (_pendingDocument is not null)
+        if (_detachedSession is not null)
         {
-            adapter.LoadDocument(_pendingDocument);
-            _pendingDocument = null;
+            adapter.RestoreSession(_detachedSession);
+            _detachedSession = null;
         }
     }
 
@@ -154,7 +171,7 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
     {
         if (ReferenceEquals(_adapter, adapter))
         {
-            _pendingDocument = WithCurrentLineLengthSettings(adapter.ExportDocument());
+            _detachedSession = adapter.CaptureSession();
             _adapter = null;
         }
     }
@@ -162,9 +179,10 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
     public void LoadDocument(TemplateDocument document)
     {
         ApplyLineLengthSettings(document.LineLength);
+        PreviewText = FirstLine(document);
         if (_adapter is null)
         {
-            _pendingDocument = document;
+            _detachedSession = new SerializedTemplateEditorSession(document);
         }
         else
         {
@@ -174,7 +192,9 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
 
     public TemplateDocument ExportDocument()
     {
-        var document = _adapter?.ExportDocument() ?? _pendingDocument ?? new TemplateDocument();
+        var document = _adapter?.ExportDocument() ??
+                       _detachedSession?.ExportDocument() ??
+                       new TemplateDocument();
         return WithCurrentLineLengthSettings(document);
     }
 
@@ -207,7 +227,15 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
     public void SelectAll() => _adapter?.SelectAll();
     public void Find() => _adapter?.Find();
     public void Replace() => _adapter?.Replace();
-    public void ReportContentChanged() => ContentChanged?.Invoke();
+    public void ReportContentChanged(bool previewIsCurrent = false)
+    {
+        if (!previewIsCurrent && _adapter is not null)
+        {
+            PreviewText = FirstLine(_adapter.ExportDocument());
+        }
+
+        ContentChanged?.Invoke();
+    }
 
     private void ApplyLineLengthSettings(LineLengthSettings settings)
     {
@@ -249,7 +277,7 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
     {
         if (!_isApplyingDocument)
         {
-            ReportContentChanged();
+            ReportContentChanged(previewIsCurrent: true);
         }
     }
 
@@ -265,5 +293,44 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
         CanPaste = snapshot.CanPaste;
         CanDelete = snapshot.CanDelete;
         CanSelectAll = snapshot.CanSelectAll;
+        PreviewText = snapshot.PreviewText;
+    }
+
+    private static string FirstLine(TemplateDocument document)
+    {
+        const int previewLength = 25;
+        var text = new System.Text.StringBuilder(previewLength);
+        foreach (var part in document.Content)
+        {
+            var partText = part.Type switch
+            {
+                DocumentPartKind.Text => part.Text ?? string.Empty,
+                _ when part.SelectedIndex is int selectedIndex &&
+                       part.Options is { } options &&
+                       selectedIndex >= 0 && selectedIndex < options.Count => options[selectedIndex],
+                _ => TemplateTextElement.PlaceholderText
+            };
+
+            foreach (var character in partText)
+            {
+                if (character is '\r' or '\n')
+                {
+                    return text.ToString().TrimEnd();
+                }
+
+                if (text.Length == 0 && char.IsWhiteSpace(character))
+                {
+                    continue;
+                }
+
+                text.Append(character);
+                if (text.Length == previewLength)
+                {
+                    return text.ToString();
+                }
+            }
+        }
+
+        return text.ToString().TrimEnd();
     }
 }

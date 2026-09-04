@@ -1,4 +1,3 @@
-using System.Text;
 using Inlay.Models;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -149,7 +148,7 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     private string UntitledName()
     {
-        var firstLine = FirstLine(Editor.ExportDocument());
+        var firstLine = Editor.PreviewText;
         if (firstLine.Length > 0)
         {
             var preview = firstLine.Length <= UntitledPreviewMaxLength
@@ -159,43 +158,6 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         }
 
         return _untitledOrdinal > 1 ? $"Untitled ({_untitledOrdinal})" : "Untitled";
-    }
-
-    private static string FirstLine(TemplateDocument document)
-    {
-        var text = new StringBuilder(UntitledPreviewMaxLength + 1);
-        foreach (var part in document.Content)
-        {
-            var partText = part.Type switch
-            {
-                DocumentPartKind.Text => part.Text ?? string.Empty,
-                _ when part.SelectedIndex is int selectedIndex &&
-                       part.Options is { } options &&
-                       selectedIndex >= 0 && selectedIndex < options.Count => options[selectedIndex],
-                _ => "_____"
-            };
-
-            foreach (var character in partText)
-            {
-                if (character is '\r' or '\n')
-                {
-                    return text.ToString().TrimEnd();
-                }
-
-                if (text.Length == 0 && char.IsWhiteSpace(character))
-                {
-                    continue;
-                }
-
-                text.Append(character);
-                if (text.Length > UntitledPreviewMaxLength)
-                {
-                    return text.ToString();
-                }
-            }
-        }
-
-        return text.ToString().TrimEnd();
     }
 
     private void RefreshFileVersion() => _knownFileVersion = File?.GetVersion();

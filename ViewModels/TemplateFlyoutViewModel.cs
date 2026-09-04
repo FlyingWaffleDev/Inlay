@@ -10,6 +10,7 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
     private readonly Action<string> _selectOption;
     private readonly Action _removeTemplate;
     private string? _selectedChoice;
+    private bool _isDisconnected;
 
     [Reactive(nameof(CanAddChoice))]
     private string _newChoice = string.Empty;
@@ -70,6 +71,23 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
         this.RaisePropertyChanged(nameof(SelectedIndex));
     }
 
+    internal void SynchronizeOptions()
+    {
+        this.RaisePropertyChanged(nameof(HasOptions));
+        this.RaisePropertyChanged(nameof(CanAddChoice));
+    }
+
+    internal void Disconnect()
+    {
+        if (_isDisconnected)
+        {
+            return;
+        }
+
+        Options.CollectionChanged -= OnOptionsChanged;
+        _isDisconnected = true;
+    }
+
     [ReactiveCommand]
     public void AddChoice()
     {
@@ -110,7 +128,6 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
             _selectOption(_selectedChoice);
         }
 
-        this.RaisePropertyChanged(nameof(HasOptions));
-        this.RaisePropertyChanged(nameof(CanAddChoice));
+        SynchronizeOptions();
     }
 }

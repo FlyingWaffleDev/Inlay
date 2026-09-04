@@ -3,6 +3,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Threading;
 using AvaloniaEdit;
+using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using Inlay.Models;
 using Inlay.ViewModels;
@@ -45,6 +46,9 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
     private readonly LineLengthIndicatorRenderer _lineLengthRenderer;
     private TemplateTextElementGenerator? _templateGenerator;
     private bool _isApplyingDocument;
+    private int _wordCount;
+    private int _replacedWordStarts;
+    private string _previewText = string.Empty;
 
     protected override Type StyleKeyOverride => typeof(TextEditor);
 
@@ -56,7 +60,7 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
         _lineLengthRenderer = new LineLengthIndicatorRenderer(TextArea.TextView);
         UpdateLineLengthIndicators();
         UpdateWordWrapping();
-        Document.TextChanged += OnDocumentTextChanged;
+        SubscribeToDocument(Document);
         TextArea.TextView.PropertyChanged += OnTextViewPropertyChanged;
         TextArea.SizeChanged += (_, _) => UpdateWordWrapping();
         TextArea.Caret.PositionChanged += (_, _) => UpdateSnapshot();
@@ -230,6 +234,52 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
     public TemplateDocument ExportDocument() =>
         _templateGenerator?.ExportDocument() ?? new TemplateDocument();
 
+    public ITemplateEditorSession CaptureSession()
+    {
+        EnsureGenerator();
+        var session = new NativeTemplateEditorSession(
+            this,
+            Document,
+            _templateGenerator!.DetachDocument(),
+            CaretOffset,
+            SelectionStart,
+            SelectionLength,
+            _wordCount);
+        ActivateDocument(
+            new TextDocument(),
+            TemplateTextElementGenerator.CreateEmptyState(),
+            wordCount: 0);
+        return session;
+    }
+
+    public void RestoreSession(ITemplateEditorSession session)
+    {
+        EnsureGenerator();
+        if (session is not NativeTemplateEditorSession nativeSession ||
+            !ReferenceEquals(nativeSession.Owner, this))
+        {
+            LoadDocument(session.ExportDocument());
+            return;
+        }
+
+        _templateGenerator!.DetachDocument();
+        ActivateDocument(
+            nativeSession.Document,
+            nativeSession.GeneratorState,
+            nativeSession.WordCount);
+
+        var selectionStart = Math.Clamp(
+            nativeSession.SelectionStart,
+            0,
+            Document.TextLength);
+        var selectionLength = Math.Clamp(
+            nativeSession.SelectionLength,
+            0,
+            Document.TextLength - selectionStart);
+        Select(selectionStart, selectionLength);
+        CaretOffset = Math.Clamp(nativeSession.CaretOffset, 0, Document.TextLength);
+    }
+
     public void LoadDocument(TemplateDocument document)
     {
         EnsureGenerator();
@@ -239,6 +289,8 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
             _templateGenerator!.LoadDocument(document);
             Document.UndoStack.ClearAll();
             CaretOffset = 0;
+            Select(0, 0);
+            RefreshPreviewText();
         }
         finally
         {
@@ -307,6 +359,10 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
         EnsureGenerator();
         newState.Attach(this);
         UpdateSnapshot();
+        if (oldState is not null)
+        {
+            Dispatcher.UIThread.Post(() => TextArea.Focus(), DispatcherPriority.Input);
+        }
     }
 
     private void EnsureGenerator()
@@ -319,6 +375,43 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
         _templateGenerator = new TemplateTextElementGenerator(this);
         TextArea.TextView.ElementGenerators.Add(_templateGenerator);
         _templateGenerator.TemplatesChanged += OnTemplatesChanged;
+    }
+
+    private void ActivateDocument(
+        TextDocument document,
+        TemplateTextElementGenerator.State generatorState,
+        int wordCount)
+    {
+        UnsubscribeFromDocument(Document);
+        Document = document;
+        _wordCount = wordCount;
+        RefreshPreviewText();
+        SubscribeToDocument(Document);
+        _templateGenerator!.AttachDocument(generatorState);
+    }
+
+    private void SubscribeToDocument(TextDocument document)
+    {
+        document.Changing += OnDocumentChanging;
+        document.Changed += OnDocumentChanged;
+        document.TextChanged += OnDocumentTextChanged;
+    }
+
+    private void UnsubscribeFromDocument(TextDocument document)
+    {
+        document.Changing -= OnDocumentChanging;
+        document.Changed -= OnDocumentChanged;
+        document.TextChanged -= OnDocumentTextChanged;
+    }
+
+    private void OnDocumentChanging(object? sender, DocumentChangeEventArgs e) =>
+        _replacedWordStarts = CountWordStarts(Document, e.Offset, e.RemovalLength);
+
+    private void OnDocumentChanged(object? sender, DocumentChangeEventArgs e)
+    {
+        _wordCount += CountWordStarts(Document, e.Offset, e.InsertionLength) -
+                      _replacedWordStarts;
+        RefreshPreviewText();
     }
 
     private void ToggleSearchPanel(bool isReplaceMode)
@@ -347,30 +440,27 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
 
     private void OnDocumentTextChanged(object? sender, EventArgs e)
     {
+        UpdateSnapshot();
         if (!_isApplyingDocument)
         {
-            EditorState?.ReportContentChanged();
+            EditorState?.ReportContentChanged(previewIsCurrent: true);
         }
-
-        UpdateSnapshot();
     }
 
     private void OnTemplatesChanged()
     {
+        UpdateSnapshot();
         if (!_isApplyingDocument)
         {
-            EditorState?.ReportContentChanged();
+            EditorState?.ReportContentChanged(previewIsCurrent: true);
         }
-
-        UpdateSnapshot();
     }
 
     private void UpdateSnapshot()
     {
-        var text = Document.Text;
         EditorState?.UpdateSnapshot(new EditorSnapshot(
-            text.Length,
-            CountWords(text),
+            Document.TextLength,
+            _wordCount,
             TextArea.Caret.Line,
             TextArea.Caret.Column,
             CanUndo,
@@ -379,30 +469,79 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
             CanCopy,
             CanPaste,
             CanDelete,
-            CanSelectAll));
+            CanSelectAll,
+            _previewText));
     }
 
-    private static int CountWords(string text)
+    private static int CountWordStarts(TextDocument document, int offset, int changedLength)
     {
+        // A replacement can only alter word starts within its span and at the first
+        // unchanged character after it.
         var count = 0;
-        var insideWord = false;
-        foreach (var character in text)
+        var endOffset = Math.Min(document.TextLength, offset + changedLength + 1);
+        for (var index = offset; index < endOffset; index++)
         {
-            if (char.IsLetterOrDigit(character))
+            if (char.IsLetterOrDigit(document.GetCharAt(index)) &&
+                (index == 0 || !char.IsLetterOrDigit(document.GetCharAt(index - 1))))
             {
-                if (!insideWord)
-                {
-                    count++;
-                    insideWord = true;
-                }
-            }
-            else
-            {
-                insideWord = false;
+                count++;
             }
         }
 
         return count;
+    }
+
+    private void RefreshPreviewText()
+    {
+        const int maximumLength = 25;
+        if (Document.TextLength == 0)
+        {
+            _previewText = string.Empty;
+            return;
+        }
+
+        var firstLine = Document.Lines[0];
+        Span<char> preview = stackalloc char[maximumLength];
+        var previewLength = 0;
+        for (var index = firstLine.Offset;
+             index < firstLine.EndOffset && previewLength < maximumLength;
+             index++)
+        {
+            var character = Document.GetCharAt(index);
+            if (previewLength == 0 && char.IsWhiteSpace(character))
+            {
+                continue;
+            }
+
+            preview[previewLength++] = character;
+        }
+
+        while (previewLength > 0 && char.IsWhiteSpace(preview[previewLength - 1]))
+        {
+            previewLength--;
+        }
+
+        _previewText = new string(preview[..previewLength]);
+    }
+
+    private sealed class NativeTemplateEditorSession(
+        TemplateTextEditor owner,
+        TextDocument document,
+        TemplateTextElementGenerator.State generatorState,
+        int caretOffset,
+        int selectionStart,
+        int selectionLength,
+        int wordCount) : ITemplateEditorSession
+    {
+        internal TemplateTextEditor Owner { get; } = owner;
+        internal TextDocument Document { get; } = document;
+        internal TemplateTextElementGenerator.State GeneratorState { get; } = generatorState;
+        internal int CaretOffset { get; } = caretOffset;
+        internal int SelectionStart { get; } = selectionStart;
+        internal int SelectionLength { get; } = selectionLength;
+        internal int WordCount { get; } = wordCount;
+
+        public TemplateDocument ExportDocument() => GeneratorState.ExportDocument(Document);
     }
 }
 

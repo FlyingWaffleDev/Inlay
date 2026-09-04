@@ -39,6 +39,43 @@ public sealed class MainWindowTabInteractionTests
     }
 
     [AvaloniaFact]
+    public void SwitchingTabsFocusesTheEditorAtTheRestoredCaret()
+    {
+        var (window, viewModel) = MainWindowTestHost.CreateWindow();
+        try
+        {
+            var firstTab = viewModel.SelectedDocument!;
+            var editor = MainWindowTestHost.FindEditor(window);
+            editor.Text = "abcd";
+            editor.CaretOffset = 2;
+
+            viewModel.AddNewDocument();
+            window.UpdateLayout();
+            var firstTabItem = window.GetVisualDescendants()
+                .OfType<TabStripItem>()
+                .Single(item => ReferenceEquals(item.DataContext, firstTab));
+
+            MainWindowTestHost.Click(
+                window,
+                MainWindowTestHost.GetCenter(firstTabItem, window),
+                MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Same(firstTab, viewModel.SelectedDocument);
+            Assert.Equal(2, editor.CaretOffset);
+            Assert.True(editor.TextArea.IsFocused);
+
+            window.KeyTextInput("X");
+
+            Assert.Equal("abXcd", editor.Text);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void DoubleClickingEmptyTabBarCreatesTab()
     {
         var (window, viewModel) = MainWindowTestHost.CreateWindow();

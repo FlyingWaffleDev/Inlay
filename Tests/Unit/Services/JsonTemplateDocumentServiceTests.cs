@@ -191,6 +191,27 @@ public sealed class JsonTemplateDocumentServiceTests
         Assert.Equal("short", Assert.Single(loaded.Content).Text);
     }
 
+    [Fact]
+    public async Task SaveRewindsASeekableStreamBeforeWriting()
+    {
+        var service = new JsonTemplateDocumentService();
+        using var stream = new MemoryStream();
+        await stream.WriteAsync(
+            Encoding.UTF8.GetBytes(new string('x', 128)),
+            TestContext.Current.CancellationToken);
+        stream.Position = 47;
+
+        await service.SaveAsync(
+            stream,
+            new TemplateDocument { Content = [DocumentPart.PlainText("saved")] },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal((byte)'{', stream.GetBuffer()[0]);
+        stream.Position = 0;
+        var loaded = await service.LoadAsync(stream, TestContext.Current.CancellationToken);
+        Assert.Equal("saved", Assert.Single(loaded.Content).Text);
+    }
+
     private static async Task<TemplateDocument> LoadJsonAsync(string json)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));

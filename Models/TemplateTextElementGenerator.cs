@@ -1,27 +1,71 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using Inlay.Models;
+using Inlay.ViewModels;
 
 namespace Inlay;
 
 internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 {
+    private static readonly Size ClickAnchorSize = new(1, 1);
     private readonly TextEditor _editor;
-    private readonly List<TemplateInfo> _templates = [];
+    private List<TemplateInfo> _templates = [];
+    private TextDocument? _attachedDocument;
+    private Flyout? _flyout;
+    private TemplateFlyoutView? _flyoutView;
+    private TemplateFlyoutViewModel? _flyoutViewModel;
+    private TemplateInfo? _flyoutTemplate;
+    private Rect _flyoutAnchorRectangle;
     private bool _isReplayingOptionChange;
+    private bool _isChangingTemplateText;
 
     public event Action? TemplatesChanged;
+
+    internal bool HasCreatedFlyout => _flyout is not null;
 
     public TemplateTextElementGenerator(TextEditor editor)
     {
         _editor = editor;
+        _attachedDocument = editor.Document;
+        _attachedDocument.Changing += OnDocumentChanging;
         _editor.AddHandler(InputElement.KeyDownEvent, OnEditorKeyDown, RoutingStrategies.Tunnel);
-        _editor.TextArea.Caret.PositionChanged += (_, _) => UpdateAnchorMovementTypes();
+        _editor.TextArea.Caret.PositionChanged += OnCaretPositionChanged;
+    }
+
+    internal State DetachDocument()
+    {
+        _attachedDocument?.Changing -= OnDocumentChanging;
+        _attachedDocument = null;
+
+        CloseFlyout();
+        var state = new State(_templates);
+        _templates = [];
+        return state;
+    }
+
+    internal static State CreateEmptyState() => new([]);
+
+    internal void AttachDocument(State state)
+    {
+        if (_attachedDocument is not null)
+        {
+            throw new InvalidOperationException("The template generator is already attached to a document.");
+        }
+
+        _templates = state.Templates;
+        _attachedDocument = _editor.Document;
+        _attachedDocument.Changing += OnDocumentChanging;
+        _editor.TextArea.TextView.Redraw();
     }
 
     public void AddTemplate(int offset, IEnumerable<string> options, int selectedIndex = -1)
@@ -31,7 +75,7 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 
         RunUndoGroup(() =>
         {
-            _editor.Document.Insert(offset, selectedText);
+            ChangeDocument(() => _editor.Document.Insert(offset, selectedText));
             var template = CreateTemplate(offset, optionList, selectedIndex);
             _editor.Document.UndoStack.Push(new TemplateMembershipOperation(this, template, true));
             AddTemplateMetadata(template);
@@ -40,47 +84,31 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         NotifyChanged();
     }
 
-    public TemplateDocument ExportDocument()
-    {
-        var content = new List<DocumentPart>();
-        var cursor = 0;
-
-        foreach (var template in _templates.OrderBy(item => item.Anchor.Offset))
-        {
-            var offset = template.Anchor.Offset;
-            if (offset < cursor || offset + template.Length > _editor.Document.TextLength)
-            {
-                continue;
-            }
-
-            AddTextPart(content, _editor.Document.GetText(cursor, offset - cursor));
-            content.Add(DocumentPart.Template(template.Options, template.SelectedIndex));
-            cursor = offset + template.Length;
-        }
-
-        AddTextPart(content, _editor.Document.GetText(cursor, _editor.Document.TextLength - cursor));
-        return new TemplateDocument { Content = content };
-    }
+    public TemplateDocument ExportDocument() => ExportDocument(_editor.Document, _templates);
 
     public void LoadDocument(TemplateDocument document)
     {
+        CloseFlyout();
         _templates.Clear();
-        _editor.Document.Text = string.Empty;
-
-        foreach (var part in document.Content)
+        ChangeDocument(() =>
         {
-            if (part.Type == DocumentPartKind.Text)
-            {
-                _editor.Document.Insert(_editor.Document.TextLength, part.Text ?? string.Empty);
-                continue;
-            }
+            _editor.Document.Text = string.Empty;
 
-            var options = part.Options ?? [];
-            var selectedIndex = part.SelectedIndex ?? -1;
-            var offset = _editor.Document.TextLength;
-            _editor.Document.Insert(offset, SelectedText(options, selectedIndex));
-            AddTemplateMetadata(CreateTemplate(offset, options, selectedIndex));
-        }
+            foreach (var part in document.Content)
+            {
+                if (part.Type == DocumentPartKind.Text)
+                {
+                    _editor.Document.Insert(_editor.Document.TextLength, part.Text ?? string.Empty);
+                    continue;
+                }
+
+                var options = part.Options ?? [];
+                var selectedIndex = part.SelectedIndex ?? -1;
+                var offset = _editor.Document.TextLength;
+                _editor.Document.Insert(offset, SelectedText(options, selectedIndex));
+                AddTemplateMetadata(CreateTemplate(offset, options, selectedIndex));
+            }
+        });
 
         _editor.TextArea.TextView.Redraw();
     }
@@ -96,17 +124,12 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
             return null;
         }
 
-        var element = new TemplateTextElement(
+        return new TemplateTextElement(
             CurrentContext.VisualLine,
             info.Length,
             info.Anchor,
-            info.Options,
-            info.SelectedIndex,
-            _editor.TextArea.TextView);
-        RegisterElement(info, element);
-        element.Removed += RemoveTemplate;
-        element.OptionSelected += SelectOption;
-        return element;
+            _editor.TextArea.TextView,
+            this);
     }
 
     private TemplateInfo CreateTemplate(int offset, IEnumerable<string> options, int selectedIndex)
@@ -127,10 +150,20 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         return info;
     }
 
-    private void RemoveTemplate(TemplateTextElement element)
+    internal void RemoveTemplate(TemplateTextElement element)
     {
         var info = _templates.FirstOrDefault(template => template.Anchor == element.Anchor);
         if (info is null)
+        {
+            return;
+        }
+
+        RemoveTemplate(info);
+    }
+
+    private void RemoveTemplate(TemplateInfo info)
+    {
+        if (!_templates.Contains(info))
         {
             return;
         }
@@ -153,22 +186,21 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         {
             RemoveTemplateMetadata(info, redraw: false);
             _editor.Document.UndoStack.Push(new TemplateMembershipOperation(this, info, false));
-            _editor.Document.Remove(offset, info.Length);
+            ChangeDocument(() => _editor.Document.Remove(offset, info.Length));
         });
 
         _editor.CaretOffset = Math.Clamp(newCaretOffset, 0, _editor.Document.TextLength);
         NotifyChanged();
     }
 
-    private void SelectOption(TemplateTextElement element, string option)
+    private void SelectOption(TemplateInfo info, string option)
     {
         if (_isReplayingOptionChange)
         {
             return;
         }
 
-        var info = _templates.FirstOrDefault(template => template.Anchor == element.Anchor);
-        if (info is null || info.Anchor.Offset < 0)
+        if (!_templates.Contains(info) || info.Anchor.Offset < 0)
         {
             return;
         }
@@ -183,7 +215,8 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 
         RunUndoGroup(() =>
         {
-            _editor.Document.Replace(info.Anchor.Offset, info.Length, option);
+            ChangeDocument(() =>
+                _editor.Document.Replace(info.Anchor.Offset, info.Length, option));
             _editor.Document.UndoStack.Push(
                 new TemplateSelectionOperation(this, info, oldText, oldIndex, option, newIndex));
             ApplySelectionMetadata(info, option, newIndex);
@@ -265,7 +298,8 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         {
             if (oldText != newText)
             {
-                _editor.Document.Replace(info.Anchor.Offset, info.Length, newText);
+                ChangeDocument(() =>
+                    _editor.Document.Replace(info.Anchor.Offset, info.Length, newText));
             }
 
             _editor.Document.UndoStack.Push(new TemplateOptionCollectionOperation(
@@ -292,7 +326,7 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
             return;
         }
 
-        _editor.Document.Replace(info.Anchor.Offset, info.Length, text);
+        ChangeDocument(() => _editor.Document.Replace(info.Anchor.Offset, info.Length, text));
         ApplySelectionMetadata(info, text, selectedIndex);
         NotifyChanged();
     }
@@ -302,40 +336,13 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         info.SelectedText = text;
         info.Length = text.Length;
         info.SelectedIndex = selectedIndex;
-        SynchronizeElements(info);
+        if (ReferenceEquals(_flyoutTemplate, info))
+        {
+            _flyoutViewModel?.SynchronizeSelectedIndex(info.SelectedIndex);
+            _flyoutViewModel?.SynchronizeOptions();
+        }
+
         _editor.TextArea.TextView.Redraw();
-    }
-
-    private static void RegisterElement(TemplateInfo info, TemplateTextElement element)
-    {
-        RemoveDeadElements(info);
-        info.Elements.Add(new WeakReference<TemplateTextElement>(element));
-    }
-
-    private static void SynchronizeElements(TemplateInfo info)
-    {
-        for (var index = info.Elements.Count - 1; index >= 0; index--)
-        {
-            if (info.Elements[index].TryGetTarget(out var element))
-            {
-                element.SynchronizeSelectedIndex(info.SelectedIndex);
-            }
-            else
-            {
-                info.Elements.RemoveAt(index);
-            }
-        }
-    }
-
-    private static void RemoveDeadElements(TemplateInfo info)
-    {
-        for (var index = info.Elements.Count - 1; index >= 0; index--)
-        {
-            if (!info.Elements[index].TryGetTarget(out _))
-            {
-                info.Elements.RemoveAt(index);
-            }
-        }
     }
 
     private void AddTemplateMetadata(TemplateInfo template, bool recreateAnchor = false)
@@ -356,7 +363,11 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 
     private void RemoveTemplateMetadata(TemplateInfo template, bool redraw = true)
     {
-        CloseElementFlyouts(template);
+        if (ReferenceEquals(_flyoutTemplate, template))
+        {
+            CloseFlyout();
+        }
+
         template.DetachedOffset = template.Anchor.Offset;
         _templates.Remove(template);
         if (redraw)
@@ -365,18 +376,163 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         }
     }
 
-    private static void CloseElementFlyouts(TemplateInfo info)
+    internal ObservableCollection<string> GetOptions(TemplateTextElement element) =>
+        FindTemplate(element).Options;
+
+    internal int GetSelectedIndex(TemplateTextElement element) =>
+        FindTemplate(element).SelectedIndex;
+
+    internal Control GetFlyoutContent(TemplateTextElement element)
     {
-        for (var index = info.Elements.Count - 1; index >= 0; index--)
+        ActivateFlyout(element);
+        return (Control)_flyoutView!.Content!;
+    }
+
+    internal Point GetFlyoutPosition(TemplateTextElement element)
+    {
+        ActivateFlyout(element);
+        return _flyoutAnchorRectangle.TopLeft;
+    }
+
+    internal Rect GetFlyoutAnchorRectangle(TemplateTextElement element)
+    {
+        ActivateFlyout(element);
+        return _flyoutAnchorRectangle;
+    }
+
+    internal PlacementMode GetFlyoutPlacement(TemplateTextElement element)
+    {
+        ActivateFlyout(element);
+        return _flyout!.Placement;
+    }
+
+    internal bool IsFlyoutOpen(TemplateTextElement element)
+    {
+        var template = TryFindTemplate(element);
+        return template is not null &&
+               ReferenceEquals(_flyoutTemplate, template) &&
+               _flyout?.IsOpen == true;
+    }
+
+    internal void ShowFlyoutAt(
+        TemplateTextElement element,
+        Control placementTarget,
+        Point position)
+    {
+        ActivateFlyout(element);
+        CaptureFlyoutPosition(element, placementTarget, position);
+        _flyout!.ShowAt(placementTarget);
+    }
+
+    internal void CaptureFlyoutPosition(
+        TemplateTextElement element,
+        Control placementTarget,
+        Point position)
+    {
+        ActivateFlyout(element);
+        var topLevel = TopLevel.GetTopLevel(placementTarget);
+        var topLevelPosition = topLevel is null
+            ? position
+            : placementTarget.TranslatePoint(position, topLevel) ?? position;
+        _flyoutAnchorRectangle = new Rect(topLevelPosition, ClickAnchorSize);
+        _flyout!.Placement = PlacementMode.Custom;
+        _flyout.CustomPopupPlacementCallback = placement =>
         {
-            if (info.Elements[index].TryGetTarget(out var element))
-            {
-                element.CloseFlyout();
-            }
-            else
-            {
-                info.Elements.RemoveAt(index);
-            }
+            placement.AnchorRectangle = _flyoutAnchorRectangle;
+            placement.Anchor = PopupAnchor.TopLeft;
+            placement.Gravity = PopupGravity.BottomRight;
+            placement.ConstraintAdjustment = PopupPositionerConstraintAdjustment.None;
+        };
+    }
+
+    internal void CloseFlyout(TemplateTextElement element)
+    {
+        var template = TryFindTemplate(element);
+        if (template is not null && ReferenceEquals(_flyoutTemplate, template))
+        {
+            CloseFlyout();
+        }
+    }
+
+    private void ActivateFlyout(TemplateTextElement element)
+    {
+        var info = FindTemplate(element);
+        if (ReferenceEquals(_flyoutTemplate, info) && _flyoutViewModel is not null)
+        {
+            return;
+        }
+
+        CloseFlyout();
+        _flyoutTemplate = info;
+        _flyoutViewModel = new TemplateFlyoutViewModel(
+            info.Options,
+            info.SelectedIndex,
+            option => SelectOption(info, option),
+            () => RemoveTemplate(info));
+        _flyoutView ??= new TemplateFlyoutView();
+        _flyoutView.DataContext = _flyoutViewModel;
+        _flyout ??= CreateFlyout(_flyoutView);
+    }
+
+    private static Flyout CreateFlyout(TemplateFlyoutView view) =>
+        new() { Content = view };
+
+    private void CloseFlyout()
+    {
+        if (_flyout?.IsOpen == true)
+        {
+            _flyout.Hide();
+        }
+
+        ReleaseFlyoutViewModel();
+    }
+
+    private void ReleaseFlyoutViewModel()
+    {
+        _flyoutViewModel?.Disconnect();
+        _flyoutViewModel = null;
+        _flyoutTemplate = null;
+        if (_flyoutView is not null)
+        {
+            _flyoutView.DataContext = null;
+        }
+    }
+
+    private TemplateInfo FindTemplate(TemplateTextElement element) =>
+        TryFindTemplate(element) ??
+        throw new InvalidOperationException("The template element is no longer part of this document.");
+
+    private TemplateInfo? TryFindTemplate(TemplateTextElement element) =>
+        _templates.FirstOrDefault(template => template.Anchor == element.Anchor);
+
+    private void OnDocumentChanging(object? sender, DocumentChangeEventArgs e)
+    {
+        if (_isChangingTemplateText || !_editor.Document.UndoStack.AcceptChanges)
+        {
+            return;
+        }
+
+        var removalEnd = e.Offset + e.RemovalLength;
+        var affectedTemplates = _templates.Where(template =>
+        {
+            var templateStart = template.Anchor.Offset;
+            var templateEnd = templateStart + template.Length;
+            var removesTemplateText = e.RemovalLength > 0 &&
+                                      e.Offset < templateEnd &&
+                                      removalEnd > templateStart;
+            var insertsInsideTemplate = e.InsertionLength > 0 &&
+                                        e.Offset > templateStart &&
+                                        e.Offset < templateEnd;
+            return removesTemplateText || insertsInsideTemplate;
+        }).ToList();
+
+        foreach (var template in affectedTemplates)
+        {
+            // The document change is added to the same undo group after this callback.
+            // Undo therefore restores the text before restoring this metadata.
+            RemoveTemplateMetadata(template, redraw: false);
+            _editor.Document.UndoStack.Push(
+                new TemplateMembershipOperation(this, template, addOnRedo: false));
         }
     }
 
@@ -401,8 +557,16 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
             : AnchorMovementType.AfterInsertion;
     }
 
+    private void OnCaretPositionChanged(object? sender, EventArgs e) =>
+        UpdateAnchorMovementTypes();
+
     private void OnEditorKeyDown(object? sender, KeyEventArgs e)
     {
+        if (!_editor.TextArea.Selection.IsEmpty)
+        {
+            return;
+        }
+
         var caret = _editor.TextArea.Caret;
         foreach (var template in _templates.Where(item =>
                      item.Anchor.Offset == caret.Offset || item.Anchor.Offset + item.Length == caret.Offset))
@@ -466,6 +630,20 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         }
     }
 
+    private void ChangeDocument(Action action)
+    {
+        var wasChangingTemplateText = _isChangingTemplateText;
+        _isChangingTemplateText = true;
+        try
+        {
+            action();
+        }
+        finally
+        {
+            _isChangingTemplateText = wasChangingTemplateText;
+        }
+    }
+
     private TextAnchor CreateAnchor(int offset)
     {
         var anchor = _editor.Document.CreateAnchor(offset);
@@ -486,7 +664,46 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         }
     }
 
-    private sealed class TemplateInfo
+    private static TemplateDocument ExportDocument(
+        TextDocument document,
+        IEnumerable<TemplateInfo> templates)
+    {
+        var content = new List<DocumentPart>();
+        var cursor = 0;
+
+        foreach (var template in templates.OrderBy(item => item.Anchor.Offset))
+        {
+            var offset = template.Anchor.Offset;
+            if (offset < cursor || offset + template.Length > document.TextLength)
+            {
+                continue;
+            }
+
+            AddTextPart(content, document.GetText(cursor, offset - cursor));
+            content.Add(DocumentPart.Template(template.Options, template.SelectedIndex));
+            cursor = offset + template.Length;
+        }
+
+        AddTextPart(content, document.GetText(cursor, document.TextLength - cursor));
+        return new TemplateDocument { Content = content };
+    }
+
+    internal sealed class State
+    {
+        private readonly List<TemplateInfo> _templates;
+
+        internal State(List<TemplateInfo> templates)
+        {
+            _templates = templates;
+        }
+
+        internal List<TemplateInfo> Templates => _templates;
+
+        internal TemplateDocument ExportDocument(TextDocument document) =>
+            TemplateTextElementGenerator.ExportDocument(document, _templates);
+    }
+
+    internal sealed class TemplateInfo
     {
         public required TextAnchor Anchor { get; set; }
         public required int DetachedOffset { get; set; }
@@ -494,7 +711,6 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
         public required string SelectedText { get; set; }
         public required int Length { get; set; }
         public required int SelectedIndex { get; set; }
-        public List<WeakReference<TemplateTextElement>> Elements { get; } = [];
     }
 
     private sealed class TemplateMembershipOperation(

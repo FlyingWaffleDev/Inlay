@@ -23,7 +23,6 @@
     <KeyBinding Gesture="Ctrl+X" Command="{Binding CutCommand}" />
     <KeyBinding Gesture="Ctrl+C" Command="{Binding CopyCommand}" />
     <KeyBinding Gesture="Ctrl+V" Command="{Binding PasteCommand}" />
-    <KeyBinding Gesture="Delete" Command="{Binding DeleteCommand}" />
     <KeyBinding Gesture="Ctrl+A" Command="{Binding SelectAllCommand}" />
     <KeyBinding Gesture="Ctrl+F" Command="{Binding FindCommand}" />
     <KeyBinding Gesture="Ctrl+H" Command="{Binding ReplaceCommand}" />

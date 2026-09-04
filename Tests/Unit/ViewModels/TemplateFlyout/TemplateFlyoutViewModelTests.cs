@@ -65,4 +65,21 @@ public sealed class TemplateFlyoutViewModelTests
 
         Assert.Equal(1, removeCount);
     }
+
+    [Fact]
+    public void DisconnectStopsObservingTheDocumentOptions()
+    {
+        var selections = 0;
+        var options = new ObservableCollection<string>(["One", "Two"]);
+        var viewModel = new TemplateFlyoutViewModel(
+            options,
+            1,
+            _ => selections++,
+            () => { });
+
+        viewModel.Disconnect();
+        options.RemoveAt(1);
+
+        Assert.Equal(0, selections);
+    }
 }

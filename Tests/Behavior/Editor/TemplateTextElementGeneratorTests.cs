@@ -179,6 +179,7 @@ public sealed class TemplateTextElementGeneratorTests
 
         try
         {
+            Assert.True(editor.TextArea.Focus());
             editor.CaretOffset = offset;
             Press(window, Key.Delete);
             editor.CaretOffset = offset + "Choice".Length;
@@ -191,6 +192,101 @@ public sealed class TemplateTextElementGeneratorTests
         {
             window.Close();
         }
+    }
+
+    [AvaloniaFact]
+    public void DeletingASelectionAcrossATemplateDissolvesItAndUndoRestoresIt()
+    {
+        var editor = new TextEditor
+        {
+            Text = "BeforeAfter",
+            Width = 600,
+            Height = 400
+        };
+        var generator = AttachGenerator(editor);
+        var templateOffset = "Before".Length;
+        generator.AddTemplate(templateOffset, ["Choice"], 0);
+        editor.Document.UndoStack.ClearAll();
+        var window = new Window { Content = editor };
+        window.Show();
+        window.UpdateLayout();
+
+        try
+        {
+            editor.Focus();
+            editor.Select(templateOffset - 1, "eChoiceA".Length);
+            Assert.Equal("eChoiceA", editor.SelectedText);
+            editor.Delete();
+
+            Assert.Equal("Beforfter", editor.Text);
+            Assert.DoesNotContain(
+                generator.ExportDocument().Content,
+                part => part.Type == DocumentPartKind.Template);
+
+            editor.Undo();
+
+            Assert.Equal("BeforeChoiceAfter", editor.Text);
+            Assert.Contains(
+                generator.ExportDocument().Content,
+                part => part.Type == DocumentPartKind.Template);
+
+            editor.Redo();
+            Assert.Equal("Beforfter", editor.Text);
+            Assert.DoesNotContain(
+                generator.ExportDocument().Content,
+                part => part.Type == DocumentPartKind.Template);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void ReplacingPartOfATemplateTurnsItsRemainingTextIntoPlainText()
+    {
+        var editor = new TextEditor { Text = "BeforeAfter" };
+        var generator = AttachGenerator(editor);
+        var templateOffset = "Before".Length;
+        generator.AddTemplate(templateOffset, ["Choice"], 0);
+        editor.Document.UndoStack.ClearAll();
+
+        editor.Document.Replace(templateOffset + 1, 2, "X");
+
+        Assert.Equal("BeforeCXiceAfter", editor.Text);
+        Assert.DoesNotContain(
+            generator.ExportDocument().Content,
+            part => part.Type == DocumentPartKind.Template);
+
+        editor.Undo();
+        Assert.Equal("BeforeChoiceAfter", editor.Text);
+        Assert.Contains(
+            generator.ExportDocument().Content,
+            part => part.Type == DocumentPartKind.Template);
+    }
+
+    [AvaloniaFact]
+    public void RenderingTemplatesUsesOneLazyFlyoutPerEditor()
+    {
+        var editor = new TextEditor
+        {
+            Text = "BeforeAfter",
+            Width = 600,
+            Height = 400
+        };
+        var generator = AttachGenerator(editor);
+        generator.AddTemplate("Before".Length, ["Choice"], 0);
+        var firstElement = ConstructTemplate(editor);
+
+        Assert.False(generator.HasCreatedFlyout);
+
+        var flyoutContent = firstElement.FlyoutContent;
+        editor.Document.Insert(editor.Document.TextLength, "!");
+        editor.TextArea.TextView.Redraw();
+        var nextElement = ConstructTemplate(editor);
+
+        Assert.True(generator.HasCreatedFlyout);
+        Assert.Same(flyoutContent, nextElement.FlyoutContent);
     }
 
     private static TemplateTextElementGenerator AttachGenerator(TextEditor editor)

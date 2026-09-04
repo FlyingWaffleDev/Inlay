@@ -55,6 +55,79 @@ public sealed class TemplateTextEditorTests
     }
 
     [AvaloniaFact]
+    public void WordCountTracksEditsAtWordBoundaries()
+    {
+        var state = new TemplateEditorViewModel();
+        var editor = new TemplateTextEditor { EditorState = state, Text = "one two" };
+
+        Assert.Contains("Words 2", state.Diagnostics, StringComparison.Ordinal);
+
+        editor.Document.Remove(3, 1);
+        Assert.Contains("Words 1", state.Diagnostics, StringComparison.Ordinal);
+
+        editor.Document.Insert(3, " ");
+        Assert.Contains("Words 2", state.Diagnostics, StringComparison.Ordinal);
+
+        editor.Document.Replace(0, editor.Document.TextLength, "  alpha 123 beta  ");
+        Assert.Contains("Words 3", state.Diagnostics, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
+    public void SwitchingEditorStatesPreservesTextHistoryCaretAndSelection()
+    {
+        var firstState = new TemplateEditorViewModel();
+        firstState.LoadDocument(DocumentWithText("First"));
+        var secondState = new TemplateEditorViewModel();
+        secondState.LoadDocument(DocumentWithText("Second"));
+        var editor = new TemplateTextEditor { EditorState = firstState };
+        editor.Document.Insert(editor.Document.TextLength, " edit");
+        editor.Select(1, 3);
+        var firstCaretOffset = editor.CaretOffset;
+
+        editor.EditorState = secondState;
+        editor.Document.Insert(editor.Document.TextLength, " tab");
+
+        Assert.Equal("Second tab", editor.Text);
+        Assert.True(editor.CanUndo);
+
+        editor.EditorState = firstState;
+
+        Assert.Equal("First edit", editor.Text);
+        Assert.True(editor.CanUndo);
+        Assert.Equal(firstCaretOffset, editor.CaretOffset);
+        Assert.Equal(1, editor.SelectionStart);
+        Assert.Equal(3, editor.SelectionLength);
+
+        editor.Undo();
+        Assert.Equal("First", editor.Text);
+
+        editor.EditorState = secondState;
+        Assert.Equal("Second tab", editor.Text);
+        Assert.True(editor.CanUndo);
+    }
+
+    [AvaloniaFact]
+    public void TemplateUndoHistorySurvivesAnEditorStateSwitch()
+    {
+        var firstState = new TemplateEditorViewModel();
+        firstState.LoadDocument(DocumentWithText("First"));
+        var secondState = new TemplateEditorViewModel();
+        secondState.LoadDocument(DocumentWithText("Second"));
+        var editor = new TemplateTextEditor { EditorState = firstState };
+        editor.CaretOffset = editor.Document.TextLength;
+        editor.InsertTemplate();
+
+        editor.EditorState = secondState;
+        editor.EditorState = firstState;
+        editor.Undo();
+
+        Assert.Equal("First", editor.Text);
+        Assert.DoesNotContain(
+            editor.ExportDocument().Content,
+            part => part.Type == DocumentPartKind.Template);
+    }
+
+    [AvaloniaFact]
     public void LineLengthIndicatorsFillACharacterCell()
     {
         var editor = new TemplateTextEditor
@@ -277,4 +350,7 @@ public sealed class TemplateTextEditorTests
             .Single();
         return Assert.IsType<TemplateFlyoutViewModel>(template.FlyoutContent.DataContext);
     }
+
+    private static TemplateDocument DocumentWithText(string text) =>
+        new() { Content = [DocumentPart.PlainText(text)] };
 }

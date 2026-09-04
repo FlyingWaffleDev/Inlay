@@ -62,7 +62,6 @@ public sealed class MainWindowCommandTests
                 ["Ctrl+X"] = viewModel.CutCommand,
                 ["Ctrl+C"] = viewModel.CopyCommand,
                 ["Ctrl+V"] = viewModel.PasteCommand,
-                ["Delete"] = viewModel.DeleteCommand,
                 ["Ctrl+A"] = viewModel.SelectAllCommand,
                 ["Ctrl+F"] = viewModel.FindCommand,
                 ["Ctrl+H"] = viewModel.ReplaceCommand,
@@ -108,6 +107,30 @@ public sealed class MainWindowCommandTests
 
             PressShortcut(window, Key.H);
             Assert.True(editor.SearchPanel.IsClosed);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void DeleteKeyDeletesTheCharacterAfterTheCaret()
+    {
+        var (window, _) = MainWindowTestHost.CreateWindow();
+        try
+        {
+            var editor = MainWindowTestHost.FindEditor(window);
+            editor.Text = "abc";
+            editor.CaretOffset = 1;
+            Assert.True(editor.TextArea.Focus());
+            Assert.True(editor.TextArea.IsFocused);
+
+            window.KeyPress(Key.Delete, RawInputModifiers.None, PhysicalKey.None, null);
+            window.KeyRelease(Key.Delete, RawInputModifiers.None, PhysicalKey.None, null);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("ac", editor.Text);
         }
         finally
         {
