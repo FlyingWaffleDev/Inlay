@@ -4,51 +4,60 @@
              x:Class="Inlay.TemplateFlyoutView"
              x:DataType="vm:TemplateFlyoutViewModel">
   <StackPanel MinWidth="220" Width="220" MaxWidth="220" Spacing="4">
-    <ListBox x:Name="OptionsList"
-             Classes="themed-scrollbar persistent-scrollbar"
-             ItemsSource="{Binding Options}"
-             SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
-             IsVisible="{Binding HasOptions}"
-             SelectionMode="Single,Toggle"
-             MinWidth="220" Width="220" MaxWidth="220" MaxHeight="200"
-             HorizontalAlignment="Stretch"
-             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-      <ListBox.Styles>
-        <Style Selector="ListBoxItem">
-          <Setter Property="Padding" Value="0" />
-          <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        </Style>
-      </ListBox.Styles>
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{Binding}" Margin="8,0"
-                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                       TextWrapping="NoWrap" />
-            <Button Grid.Column="1"
-                    Classes="option-remove close-action"
-                    Width="24"
-                    Height="24"
-                    Padding="0"
-                    Margin="0,0,4,0"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    ToolTip.Tip="Remove choice"
-                    AutomationProperties.Name="Remove choice"
-                    Click="RemoveOptionClicked">
-              <Path Classes="close-glyph"
-                    Width="10"
-                    Height="10"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Data="M 0,0 L 10,10 M 10,0 L 0,10"
-                    StrokeThickness="2"
-                    StrokeLineCap="Round" />
-            </Button>
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <Panel x:Name="OptionsListHost" IsVisible="{Binding HasOptions}">
+      <ListBox x:Name="OptionsList"
+               Classes="themed-scrollbar persistent-scrollbar"
+               ItemsSource="{Binding Options}"
+               SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
+               SelectionMode="Single,Toggle"
+               MinWidth="220" Width="220" MaxWidth="220" MaxHeight="200"
+               HorizontalAlignment="Stretch"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.Styles>
+          <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+          </Style>
+        </ListBox.Styles>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding}" Margin="8,0"
+                         VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                         TextWrapping="NoWrap" />
+              <Button Grid.Column="1"
+                      Classes="option-remove close-action"
+                      Width="24"
+                      Height="24"
+                      Padding="0"
+                      Margin="0,0,4,0"
+                      HorizontalContentAlignment="Center"
+                      VerticalContentAlignment="Center"
+                      ToolTip.Tip="Remove choice"
+                      AutomationProperties.Name="Remove choice"
+                      Click="RemoveOptionClicked">
+                <Path Classes="close-glyph"
+                      Width="10"
+                      Height="10"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Data="M 0,0 L 10,10 M 10,0 L 0,10"
+                      StrokeThickness="2"
+                      StrokeLineCap="Round" />
+              </Button>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <Border x:Name="ChoiceDropIndicator"
+              Height="2"
+              Background="{DynamicResource SystemControlHighlightAccentBrush}"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top"
+              IsVisible="False"
+              IsHitTestVisible="False"
+              ZIndex="10" />
+    </Panel>
     <Border Height="1" Margin="0,4"
             Background="{DynamicResource InlayShellBorderBrush}" />
     <TextBox x:Name="NewChoiceInput" Text="{Binding NewChoice, Mode=TwoWay}"

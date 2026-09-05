@@ -88,12 +88,7 @@ internal sealed partial class MainWindowViewModel : ReactiveObject, IDisposable
             return;
         }
 
-        // A slot is a gap between tabs, so a slot to the right of the tab being
-        // moved lands one index earlier once the tab leaves its current place.
-        var newIndex = Math.Clamp(
-            targetSlot > sourceIndex ? targetSlot - 1 : targetSlot,
-            0,
-            Documents.Count - 1);
+        var newIndex = DragReorder.SlotToIndex(targetSlot, sourceIndex, Documents.Count);
         if (newIndex != sourceIndex)
         {
             Documents.Move(sourceIndex, newIndex);

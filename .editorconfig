@@ -12,6 +12,10 @@ dotnet_diagnostic.CA2007.severity = none
 # Font discovery failures are converted into dialog status here.
 dotnet_diagnostic.CA1031.severity = none
 
+[Views/TemplateFlyoutView.axaml.cs]
+# Drag continuations must resume on Avalonia's UI thread.
+dotnet_diagnostic.CA2007.severity = none
+
 [ViewModels/*.cs]
 # Reactive commands update bound properties after awaits and require the UI context.
 dotnet_diagnostic.CA2007.severity = none
