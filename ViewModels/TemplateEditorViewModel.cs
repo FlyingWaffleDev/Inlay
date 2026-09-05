@@ -38,9 +38,9 @@ internal interface ITemplateEditorAdapter
     void InsertTemplate();
     void Undo();
     void Redo();
-    void Cut();
-    void Copy();
-    void Paste();
+    Task<bool> CutAsync();
+    Task<bool> CopyAsync();
+    Task PasteAsync();
     void Delete();
     void SelectAll();
     void Find();
@@ -220,9 +220,9 @@ internal sealed partial class TemplateEditorViewModel : ReactiveObject
     public void InsertTemplate() => _adapter?.InsertTemplate();
     public void Undo() => _adapter?.Undo();
     public void Redo() => _adapter?.Redo();
-    public void Cut() => _adapter?.Cut();
-    public void Copy() => _adapter?.Copy();
-    public void Paste() => _adapter?.Paste();
+    public Task<bool> CutAsync() => _adapter?.CutAsync() ?? Task.FromResult(false);
+    public Task<bool> CopyAsync() => _adapter?.CopyAsync() ?? Task.FromResult(false);
+    public Task PasteAsync() => _adapter?.PasteAsync() ?? Task.CompletedTask;
     public void Delete() => _adapter?.Delete();
     public void SelectAll() => _adapter?.SelectAll();
     public void Find() => _adapter?.Find();

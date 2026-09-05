@@ -112,7 +112,7 @@ public sealed class TemplateEditorViewModelTests
     }
 
     [Fact]
-    public void EditingCommandsReachTheAttachedEditor()
+    public async Task EditingCommandsReachTheAttachedEditor()
     {
         var viewModel = new TemplateEditorViewModel();
         var editor = new FakeEditorAdapter();
@@ -121,9 +121,9 @@ public sealed class TemplateEditorViewModelTests
         viewModel.InsertTemplate();
         viewModel.Undo();
         viewModel.Redo();
-        viewModel.Cut();
-        viewModel.Copy();
-        viewModel.Paste();
+        await viewModel.CutAsync();
+        await viewModel.CopyAsync();
+        await viewModel.PasteAsync();
         viewModel.Delete();
         viewModel.SelectAll();
         viewModel.Find();

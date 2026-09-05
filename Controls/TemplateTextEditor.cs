@@ -1,10 +1,15 @@
+using System.Diagnostics.CodeAnalysis;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
+using AvaloniaEdit.Editing;
 using AvaloniaEdit.Rendering;
+using AvaloniaEdit.Utils;
 using Inlay.Models;
 using Inlay.ViewModels;
 
@@ -65,6 +70,21 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
         TextArea.SizeChanged += (_, _) => UpdateWordWrapping();
         TextArea.Caret.PositionChanged += (_, _) => UpdateSnapshot();
         TextArea.SelectionChanged += (_, _) => UpdateSnapshot();
+
+        TextArea.CommandBindings.Add(new RoutedCommandBinding(
+            ApplicationCommands.Copy,
+            (_, e) => { e.Handled = true; _ = CopyAsync(); },
+            (_, e) => { e.CanExecute = CanCopy; e.Handled = true; }));
+
+        TextArea.CommandBindings.Add(new RoutedCommandBinding(
+            ApplicationCommands.Cut,
+            (_, e) => { e.Handled = true; _ = CutAsync(); },
+            (_, e) => { e.CanExecute = CanCut; e.Handled = true; }));
+
+        TextArea.CommandBindings.Add(new RoutedCommandBinding(
+            ApplicationCommands.Paste,
+            (_, e) => { e.Handled = true; _ = PasteAsync(); },
+            (_, e) => { e.CanExecute = CanPaste; e.Handled = true; }));
     }
 
     public TemplateEditorViewModel? EditorState
@@ -347,6 +367,324 @@ internal sealed class TemplateTextEditor : TextEditor, ITemplateEditorAdapter
     public void Find() => ToggleSearchPanel(isReplaceMode: false);
 
     public void Replace() => ToggleSearchPanel(isReplaceMode: true);
+
+    private readonly record struct EditorStateToken(
+        TextDocument? Document,
+        ITextSourceVersion? Version,
+        TemplateEditorViewModel? EditorState,
+        Selection? Selection,
+        int CaretOffset,
+        int SelectionStart,
+        int SelectionLength);
+
+    private EditorStateToken CaptureStateToken() =>
+        new(
+            Document,
+            Document?.Version,
+            EditorState,
+            TextArea.Selection,
+            CaretOffset,
+            SelectionStart,
+            SelectionLength);
+
+    private bool IsStateValid(EditorStateToken token) =>
+        Document == token.Document &&
+        Document is not null &&
+        !IsReadOnly &&
+        EditorState == token.EditorState &&
+        Document.Version == token.Version &&
+        Equals(TextArea.Selection, token.Selection) &&
+        CaretOffset == token.CaretOffset;
+
+    internal IEditorClipboard? ClipboardOverride { get; set; }
+
+    private IEditorClipboard GetClipboard() =>
+        ClipboardOverride ?? new TopLevelEditorClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard);
+
+    public new bool CanCopy => TextArea is { Document: not null } &&
+                                (TextArea.Options.CutCopyWholeLine || !TextArea.Selection.IsEmpty);
+
+    public new bool CanCut => CanCopy && !IsReadOnly;
+
+    public new bool CanPaste => TextArea is { Document: not null } && !IsReadOnly;
+
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Avalonia clipboard takes ownership of outgoing DataTransfer.")]
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Clipboard operations can fail unexpectedly on native platforms.")]
+    public async Task<bool> CopyAsync()
+    {
+        DataTransfer transfer;
+        if (TextArea.Selection is RectangleSelection rectSelection)
+        {
+            if (rectSelection.IsEmpty)
+            {
+                return false;
+            }
+
+            var text = rectSelection.GetText();
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+
+            text = TextUtilities.NormalizeNewLines(text, Environment.NewLine);
+            transfer = TemplateClipboard.CreateTextDataTransfer(text);
+        }
+        else
+        {
+            var range = GetCopyRange();
+            if (range is null)
+            {
+                return false;
+            }
+
+            var (offset, length) = range.Value;
+            if (length <= 0)
+            {
+                return false;
+            }
+
+            var plainText = Document.GetText(offset, length);
+            plainText = TextUtilities.NormalizeNewLines(plainText, Environment.NewLine);
+
+            EnsureGenerator();
+            var parts = _templateGenerator!.ExportRange(offset, length);
+            var payload = new TemplateClipboardPayload
+            {
+                FormatVersion = 1,
+                Content = parts
+            };
+
+            transfer = TemplateClipboard.CreateDataTransfer(plainText, payload);
+        }
+
+        try
+        {
+            var clipboard = GetClipboard();
+            await clipboard.SetDataAsync(transfer).ConfigureAwait(true);
+            return true;
+        }
+        catch
+        {
+            ((IDisposable)transfer).Dispose();
+            return false;
+        }
+    }
+
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Clipboard operations can fail unexpectedly on native platforms.")]
+    public async Task<bool> CutAsync()
+    {
+        if (IsReadOnly || Document is null)
+        {
+            return false;
+        }
+
+        var isRectSelection = TextArea.Selection is RectangleSelection;
+        (int Offset, int Length)? range = null;
+        if (isRectSelection)
+        {
+            if (TextArea.Selection.IsEmpty)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            range = GetCopyRange();
+            if (range is null || range.Value.Length <= 0)
+            {
+                return false;
+            }
+        }
+
+        var stateToken = CaptureStateToken();
+        var copied = await CopyAsync().ConfigureAwait(true);
+        if (!copied || !IsStateValid(stateToken))
+        {
+            return false;
+        }
+
+        if (isRectSelection)
+        {
+            Document.UndoStack.StartUndoGroup();
+            try
+            {
+                TextArea.Selection.ReplaceSelectionWithText(string.Empty);
+            }
+            finally
+            {
+                Document.UndoStack.EndUndoGroup();
+            }
+        }
+        else if (range is not null)
+        {
+            var (offset, length) = range.Value;
+            Document.UndoStack.StartUndoGroup();
+            try
+            {
+                Document.Remove(offset, length);
+            }
+            finally
+            {
+                Document.UndoStack.EndUndoGroup();
+            }
+
+            CaretOffset = Math.Clamp(offset, 0, Document.TextLength);
+            Select(CaretOffset, 0);
+        }
+
+        TextArea.Caret.BringCaretToView();
+        UpdateSnapshot();
+        return true;
+    }
+
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Clipboard operations can fail unexpectedly on native platforms.")]
+    public async Task PasteAsync()
+    {
+        if (IsReadOnly || Document is null)
+        {
+            return;
+        }
+
+        var stateToken = CaptureStateToken();
+        var clipboard = GetClipboard();
+        IAsyncDataTransfer? data;
+        try
+        {
+            data = await clipboard.TryGetDataAsync().ConfigureAwait(true);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (data is null)
+        {
+            return;
+        }
+
+        using var dataTransfer = data;
+        if (!IsStateValid(stateToken))
+        {
+            return;
+        }
+
+        if (TextArea.Selection is RectangleSelection rectSelection)
+        {
+            string? text;
+            try
+            {
+                text = await dataTransfer.TryGetTextAsync().ConfigureAwait(true);
+            }
+            catch
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(text) || !IsStateValid(stateToken))
+            {
+                return;
+            }
+
+            text = NormalizeTextForPaste(text);
+
+            Document.UndoStack.StartUndoGroup();
+            try
+            {
+                rectSelection.ReplaceSelectionWithText(text);
+            }
+            finally
+            {
+                Document.UndoStack.EndUndoGroup();
+            }
+
+            TextArea.Caret.BringCaretToView();
+            UpdateSnapshot();
+            return;
+        }
+
+        var payload = await TemplateClipboard.TryGetPayloadAsync(dataTransfer).ConfigureAwait(true);
+        if (!IsStateValid(stateToken))
+        {
+            return;
+        }
+
+        if (payload is not null && payload.Content.Count > 0)
+        {
+            var normalizedParts = payload.Content.Select(p =>
+            {
+                if (p.Type == DocumentPartKind.Text && p.Text is not null)
+                {
+                    return DocumentPart.PlainText(NormalizeTextForPaste(p.Text));
+                }
+
+                return p;
+            }).ToList();
+
+            EnsureGenerator();
+            _templateGenerator!.PasteContent(stateToken.SelectionStart, stateToken.SelectionLength, normalizedParts);
+            TextArea.Caret.BringCaretToView();
+            UpdateSnapshot();
+            return;
+        }
+
+        string? plainText;
+        try
+        {
+            plainText = await dataTransfer.TryGetTextAsync().ConfigureAwait(true);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(plainText) && IsStateValid(stateToken))
+        {
+            plainText = NormalizeTextForPaste(plainText);
+
+            EnsureGenerator();
+            _templateGenerator!.PasteContent(
+                stateToken.SelectionStart,
+                stateToken.SelectionLength,
+                [DocumentPart.PlainText(plainText)]);
+            TextArea.Caret.BringCaretToView();
+            UpdateSnapshot();
+        }
+    }
+
+    private string NormalizeTextForPaste(string text)
+    {
+        var newLine = TextUtilities.GetNewLineFromDocument(TextArea.Document, TextArea.Caret.Line);
+        text = TextUtilities.NormalizeNewLines(text, newLine);
+        return TextArea.Options.ConvertTabsToSpaces
+            ? text.Replace("\t", new string(' ', TextArea.Options.IndentationSize), StringComparison.Ordinal)
+            : text;
+    }
+
+    private (int Offset, int Length)? GetCopyRange()
+    {
+        if (TextArea.Selection is RectangleSelection)
+        {
+            return null;
+        }
+
+        if (SelectionLength > 0)
+        {
+            var offset = Math.Clamp(SelectionStart, 0, Document.TextLength);
+            var length = Math.Clamp(SelectionLength, 0, Document.TextLength - offset);
+            return (offset, length);
+        }
+
+        if (TextArea.Options.CutCopyWholeLine)
+        {
+            var line = Document.GetLineByNumber(TextArea.Caret.Line);
+            if (line.TotalLength > 0)
+            {
+                return (line.Offset, line.TotalLength);
+            }
+        }
+
+        return null;
+    }
 
     private void AttachState(TemplateEditorViewModel? oldState, TemplateEditorViewModel? newState)
     {

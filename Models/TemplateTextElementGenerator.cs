@@ -86,6 +86,94 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 
     public TemplateDocument ExportDocument() => ExportDocument(_editor.Document, _templates);
 
+    public List<DocumentPart> ExportRange(int start, int length)
+    {
+        var content = new List<DocumentPart>();
+        var end = start + length;
+        var cursor = start;
+
+        var matchingTemplates = _templates
+            .Where(t => t.Anchor.Offset >= start && t.Anchor.Offset + t.Length <= end)
+            .OrderBy(t => t.Anchor.Offset);
+
+        foreach (var template in matchingTemplates)
+        {
+            var offset = template.Anchor.Offset;
+            if (offset < cursor)
+            {
+                continue;
+            }
+
+            if (offset > cursor)
+            {
+                AddTextPart(content, _editor.Document.GetText(cursor, offset - cursor));
+            }
+
+            content.Add(DocumentPart.Template(template.Options.ToList(), template.SelectedIndex));
+            cursor = offset + template.Length;
+        }
+
+        if (cursor < end)
+        {
+            AddTextPart(content, _editor.Document.GetText(cursor, end - cursor));
+        }
+
+        return content;
+    }
+
+    public void PasteContent(int offset, int selectionLength, IReadOnlyList<DocumentPart> parts)
+    {
+        if (parts.Count == 0)
+        {
+            return;
+        }
+
+        CloseFlyout();
+
+        var clampedOffset = Math.Clamp(offset, 0, _editor.Document.TextLength);
+        var clampedLength = Math.Clamp(selectionLength, 0, _editor.Document.TextLength - clampedOffset);
+
+        RunUndoGroup(() =>
+        {
+            if (clampedLength > 0)
+            {
+                _editor.Document.Remove(clampedOffset, clampedLength);
+            }
+
+            var currentOffset = clampedOffset;
+            foreach (var part in parts)
+            {
+                if (part.Type == DocumentPartKind.Text)
+                {
+                    var text = part.Text ?? string.Empty;
+                    if (text.Length > 0)
+                    {
+                        ChangeDocument(() => _editor.Document.Insert(currentOffset, text));
+                        currentOffset += text.Length;
+                    }
+                }
+                else if (part.Type == DocumentPartKind.Template)
+                {
+                    var options = part.Options ?? [];
+                    var selectedIndex = part.SelectedIndex ?? -1;
+                    var text = SelectedText(options, selectedIndex);
+
+                    ChangeDocument(() => _editor.Document.Insert(currentOffset, text));
+                    var template = CreateTemplate(currentOffset, options, selectedIndex);
+                    _editor.Document.UndoStack.Push(
+                        new TemplateMembershipOperation(this, template, addOnRedo: true));
+                    AddTemplateMetadata(template);
+                    currentOffset += text.Length;
+                }
+            }
+
+            _editor.Select(currentOffset, 0);
+            _editor.CaretOffset = currentOffset;
+        });
+
+        NotifyChanged();
+    }
+
     public void LoadDocument(TemplateDocument document)
     {
         CloseFlyout();

@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Inlay.Controls;
+using Inlay.Models;
 using Xunit;
 
 namespace Inlay.Tests;
@@ -313,6 +314,76 @@ public sealed class MainWindowCommandTests
         finally
         {
             window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void CopyAndPasteShortcutBetweenTabsPreservesTemplate()
+    {
+        var (window, viewModel) = MainWindowTestHost.CreateWindow();
+        try
+        {
+            var editor = MainWindowTestHost.FindEditor(window);
+            viewModel.SelectedDocument!.Editor.LoadDocument(new TemplateDocument
+            {
+                Content = [DocumentPart.Template(["Option A", "Option B"], 1)]
+            });
+            editor.Select(0, editor.Document.TextLength);
+
+            PressShortcut(window, Key.C);
+
+            viewModel.AddNewDocument();
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            Assert.Equal(string.Empty, editor.Text);
+
+            PressShortcut(window, Key.V);
+
+            Assert.Equal("Option B", editor.Text);
+            var exported = viewModel.SelectedDocument.Editor.ExportDocument();
+            var part = Assert.Single(exported.Content);
+            Assert.Equal(DocumentPartKind.Template, part.Type);
+            Assert.Equal(["Option A", "Option B"], part.Options);
+            Assert.Equal(1, part.SelectedIndex);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void CopyAndPasteShortcutBetweenWindowsPreservesTemplate()
+    {
+        var (window1, viewModel1) = MainWindowTestHost.CreateWindow();
+        var (window2, viewModel2) = MainWindowTestHost.CreateWindow();
+        try
+        {
+            var editor1 = MainWindowTestHost.FindEditor(window1);
+            var editor2 = MainWindowTestHost.FindEditor(window2);
+
+            viewModel1.SelectedDocument!.Editor.LoadDocument(new TemplateDocument
+            {
+                Content = [DocumentPart.Template(["Choice 1", "Choice 2"], 0)]
+            });
+            editor1.Select(0, editor1.Document.TextLength);
+
+            PressShortcut(window1, Key.C);
+
+            editor2.Select(0, 0);
+            PressShortcut(window2, Key.V);
+
+            Assert.Equal("Choice 1", editor2.Text);
+            var exported = viewModel2.SelectedDocument!.Editor.ExportDocument();
+            var part = Assert.Single(exported.Content);
+            Assert.Equal(["Choice 1", "Choice 2"], part.Options);
+            Assert.Equal(0, part.SelectedIndex);
+        }
+        finally
+        {
+            window1.Close();
+            window2.Close();
         }
     }
 

@@ -309,13 +309,13 @@ internal sealed partial class MainWindowViewModel : ReactiveObject, IDisposable
     private void Redo() => Editor.Redo();
 
     [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
-    private void Cut() => Editor.Cut();
+    private async Task CutAsync() => await Editor.CutAsync();
 
     [ReactiveCommand]
-    private void Copy() => Editor.Copy();
+    private async Task CopyAsync() => await Editor.CopyAsync();
 
     [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
-    private void Paste() => Editor.Paste();
+    private async Task PasteAsync() => await Editor.PasteAsync();
 
     [ReactiveCommand(CanExecute = nameof(_canEditDocument))]
     private void Delete() => Editor.Delete();
