@@ -241,4 +241,36 @@ public sealed class TabMoveAndCopyTests
         Assert.False(copiedTab.ChangedInAnotherWindow);
         Assert.False(copiedTab.CanEdit);
     }
+
+    [Fact]
+    public async Task EveryWayOfLosingATabUnregistersItFromTheLiveTabList()
+    {
+        // The "changed in another window" warning scans live tabs. A tab dropped
+        // without being disposed would be pinned for the life of the process and
+        // keep answering that question with stale state.
+        using var replacing = MainWindowViewModelTestContext.Create();
+        var pristine = replacing.ViewModel.Documents[0];
+        Assert.True(DocumentTabViewModel.IsTracked(pristine));
+
+        // Copying over the lone pristine untitled tab drops it.
+        replacing.ViewModel.CopyDocument(
+            new TemplateDocument { Content = [DocumentPart.PlainText("Copy")] },
+            null,
+            isDirty: false);
+        Assert.False(DocumentTabViewModel.IsTracked(pristine));
+
+        using var closing = MainWindowViewModelTestContext.Create();
+        closing.ViewModel.AddNewDocument();
+        var closed = closing.ViewModel.Documents[0];
+        Assert.True(DocumentTabViewModel.IsTracked(closed));
+
+        await closing.ViewModel.CloseDocumentAsync(closed);
+        Assert.False(DocumentTabViewModel.IsTracked(closed));
+
+        // Closing the window disposes the view model and with it every open tab.
+        var surviving = closing.ViewModel.Documents[0];
+        Assert.True(DocumentTabViewModel.IsTracked(surviving));
+        closing.Dispose();
+        Assert.False(DocumentTabViewModel.IsTracked(surviving));
+    }
 }

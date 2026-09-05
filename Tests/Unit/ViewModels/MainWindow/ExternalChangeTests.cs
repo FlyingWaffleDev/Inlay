@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Windows.Input;
 using Inlay.Models;
 using Xunit;
@@ -176,11 +177,10 @@ public sealed class ExternalChangeTests
         Assert.Equal("opened.itd changed outside Inlay. Reload it or ignore the changes?", context.Test.ViewModel.SelectedDocument.ExternalChangesMessage);
     }
 
+    [SuppressMessage("Reliability", "CA2000", Justification = "The caller owns the returned object and disposes it.")]
     private static async Task<OpenedDocumentContext> OpenDocument()
     {
-#pragma warning disable CA2000 // Ownership passes to the caller.
         var test = MainWindowViewModelTestContext.Create();
-#pragma warning restore CA2000
         var file = new MemoryDocumentFile("opened.itd");
         file.SetDocumentText("Original");
         test.Storage.OpenFile = file;

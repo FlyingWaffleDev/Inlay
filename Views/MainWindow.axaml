@@ -273,7 +273,7 @@
                 <TabStrip.ItemTemplate>
                   <DataTemplate x:DataType="vm:DocumentTabViewModel">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                      <TextBlock Text="{Binding Header}" FontSize="18" />
+                      <TextBlock Text="{Binding Header}" FontSize="18" VerticalAlignment="Bottom" />
                       <Button Classes="tab-close close-action"
                               Width="24"
                               Height="24"

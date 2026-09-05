@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Inlay.ViewModels;
@@ -138,12 +139,11 @@ public sealed class ApplicationBehaviorTests
         Assert.False(tab.IsDirty);
     }
 
+    [SuppressMessage("Reliability", "CA2000", Justification = "The caller owns the returned object and disposes it.")]
     private static MainWindow CreateWindow(FakeInteractionService interaction) =>
-#pragma warning disable CA2000 // Ownership passes to the caller.
         new(new MainWindowViewModel(
             new JsonTemplateDocumentService(),
             new FakeStorageService(),
             interaction,
             new FakeApplicationService()));
-#pragma warning restore CA2000
 }

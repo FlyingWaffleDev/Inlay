@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Inlay.Models;
 using Inlay.ViewModels;
 using System.Text;
@@ -14,18 +15,17 @@ internal sealed record MainWindowViewModelTestContext(
 {
     public void Dispose() => ViewModel.Dispose();
 
+    [SuppressMessage("Reliability", "CA2000", Justification = "The caller owns the returned object and disposes it.")]
     public static MainWindowViewModelTestContext Create()
     {
         var storage = new FakeStorageService();
         var interaction = new FakeInteractionService();
         var application = new FakeApplicationService();
-#pragma warning disable CA2000 // Ownership passes to the caller.
         var viewModel = new MainWindowViewModel(
             new JsonTemplateDocumentService(),
             storage,
             interaction,
             application);
-#pragma warning restore CA2000
         var editor = new FakeEditorAdapter();
         viewModel.Editor!.Attach(editor);
         return new MainWindowViewModelTestContext(

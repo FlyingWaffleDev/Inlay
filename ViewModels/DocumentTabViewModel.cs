@@ -51,6 +51,9 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
             MarkDirty();
         }
 
+        // Registering publishes this tab to other threads, so it stays last: every
+        // field another tab could read must already be written. Dispose unregisters,
+        // and a tab that is never disposed stays here for the life of the process.
         lock (LiveTabsLock)
         {
             LiveTabs.Add(this);
@@ -170,6 +173,14 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         lock (LiveTabsLock)
         {
             LiveTabs.Remove(this);
+        }
+    }
+
+    internal static bool IsTracked(DocumentTabViewModel tab)
+    {
+        lock (LiveTabsLock)
+        {
+            return LiveTabs.Contains(tab);
         }
     }
 

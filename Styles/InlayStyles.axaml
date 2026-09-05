@@ -109,6 +109,11 @@
   <Style Selector="Window">
     <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" />
   </Style>
+  <Style Selector="Button">
+    <Setter Property="Padding" Value="8,8,8,6" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
 
   <Style Selector="ListBox.persistent-scrollbar /template/ ScrollViewer#PART_ScrollViewer">
     <Setter Property="VerticalScrollBarVisibility" Value="Visible" />
