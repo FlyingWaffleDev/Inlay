@@ -56,7 +56,7 @@ public sealed class LineLengthBehaviorTests
     [AvaloniaFact]
     public async Task OpeningADocumentAppliesItsLineSettingsWithoutMarkingItDirty()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var file = new MemoryDocumentFile("configured.itd");
         file.SetRawContents("""
             {

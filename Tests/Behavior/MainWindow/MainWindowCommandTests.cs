@@ -203,7 +203,7 @@ public sealed class MainWindowCommandTests
     [AvaloniaFact]
     public async Task FontCommandUpdatesTheRenderedEditorFamily()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var initialFont = context.ViewModel.EditorFontFamily;
         context.Interaction.SelectedFont = new FontFamily("DejaVu Sans Mono");
         var window = new MainWindow(context.ViewModel);

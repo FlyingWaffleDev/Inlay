@@ -10,18 +10,22 @@ internal sealed record MainWindowViewModelTestContext(
     FakeStorageService Storage,
     FakeInteractionService Interaction,
     FakeApplicationService Application,
-    FakeEditorAdapter Editor)
+    FakeEditorAdapter Editor) : IDisposable
 {
+    public void Dispose() => ViewModel.Dispose();
+
     public static MainWindowViewModelTestContext Create()
     {
         var storage = new FakeStorageService();
         var interaction = new FakeInteractionService();
         var application = new FakeApplicationService();
+#pragma warning disable CA2000 // Ownership passes to the caller.
         var viewModel = new MainWindowViewModel(
             new JsonTemplateDocumentService(),
             storage,
             interaction,
             application);
+#pragma warning restore CA2000
         var editor = new FakeEditorAdapter();
         viewModel.Editor!.Attach(editor);
         return new MainWindowViewModelTestContext(
@@ -160,12 +164,23 @@ internal sealed class MemoryDocumentFile(string name, string? identity = null) :
         }
 
         Contents.Position = 0;
-        return Task.FromResult<Stream>(new NonClosingStream(Contents));
+        return Task.FromResult<Stream>(
+            new NonClosingStream(Contents, () => _lastWriteTimeUtc = _lastWriteTimeUtc.AddTicks(1)));
     }
 }
 
-internal sealed class NonClosingStream(Stream inner) : Stream
+internal sealed class NonClosingStream(Stream inner, Action? onDispose = null) : Stream
 {
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            onDispose?.Invoke();
+        }
+
+        base.Dispose(disposing);
+    }
+
     public override bool CanRead => inner.CanRead;
     public override bool CanSeek => inner.CanSeek;
     public override bool CanWrite => inner.CanWrite;

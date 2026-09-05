@@ -7,7 +7,7 @@ public sealed class FileOperationFailureTests
     [Fact]
     public async Task CancellingSaveAsLeavesTheDocumentDirty()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.ViewModel.Editor.ReportContentChanged();
         context.Storage.CancelSaveAs = true;
 
@@ -22,7 +22,7 @@ public sealed class FileOperationFailureTests
     [Fact]
     public async Task SaveAsRequestsANewFileForANamedDocument()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var openedFile = new MemoryDocumentFile("opened.itd");
         openedFile.SetDocumentText("Original");
         context.Storage.OpenFile = openedFile;
@@ -41,7 +41,7 @@ public sealed class FileOperationFailureTests
     [Fact]
     public async Task SaveFailureReportsTheErrorAndKeepsTheDocumentDirty()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.ViewModel.Editor.ReportContentChanged();
         context.Storage.SaveFile.OpenWriteException = new IOException("Disk is full");
 
@@ -56,7 +56,7 @@ public sealed class FileOperationFailureTests
     [Fact]
     public async Task InvalidOpenContentReportsTheErrorWithoutReplacingTheCurrentTab()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var originalTab = context.ViewModel.SelectedDocument;
         var file = new MemoryDocumentFile("broken.itd");
         file.SetRawContents("{not valid json");

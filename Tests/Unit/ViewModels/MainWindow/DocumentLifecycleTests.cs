@@ -7,7 +7,7 @@ public sealed class DocumentLifecycleTests
     [Fact]
     public async Task NewCreatesAndSelectsAnotherDocumentTab()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var original = context.ViewModel.SelectedDocument;
 
         await MainWindowViewModelTestContext.ObserveAsync(
@@ -24,7 +24,7 @@ public sealed class DocumentLifecycleTests
     [Fact]
     public async Task UntitledNumbersRemainAssignedAndInteriorGapsAreNotReused()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.ViewModel.AddNewDocument();
         context.ViewModel.AddNewDocument();
         var third = context.ViewModel.SelectedDocument!;
@@ -47,7 +47,7 @@ public sealed class DocumentLifecycleTests
     [Fact]
     public async Task ClosingTheHighestUntitledNumberMakesItAvailableAgain()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.ViewModel.AddNewDocument();
         context.ViewModel.AddNewDocument();
         context.ViewModel.AddNewDocument();
@@ -61,7 +61,7 @@ public sealed class DocumentLifecycleTests
     [Fact]
     public async Task SavingTheHighestUntitledNumberMakesItAvailableAgain()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.ViewModel.AddNewDocument();
         context.Storage.SaveFile = new MemoryDocumentFile("named.itd");
 

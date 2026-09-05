@@ -118,10 +118,32 @@ public sealed class ApplicationBehaviorTests
         }
     }
 
+    [AvaloniaFact]
+    public void ClosingAWindowReleasesItsTabsWithoutDisturbingTheBoundSelection()
+    {
+        var (window, viewModel) = MainWindowTestHost.CreateWindow();
+        var tab = viewModel.SelectedDocument!;
+        var editor = MainWindowTestHost.FindEditor(window);
+
+        window.Close();
+
+        // The window is still bound to Documents while it closes, so emptying the
+        // collection here would push a null selection back through SelectedDocument
+        // and every SelectedDocument.* binding would fail.
+        Assert.Same(tab, viewModel.SelectedDocument);
+        Assert.Single(viewModel.Documents);
+
+        // The tab is disposed all the same, so its editor no longer feeds it changes.
+        editor.Text = "Edited after the window closed";
+        Assert.False(tab.IsDirty);
+    }
+
     private static MainWindow CreateWindow(FakeInteractionService interaction) =>
+#pragma warning disable CA2000 // Ownership passes to the caller.
         new(new MainWindowViewModel(
             new JsonTemplateDocumentService(),
             new FakeStorageService(),
             interaction,
             new FakeApplicationService()));
+#pragma warning restore CA2000
 }

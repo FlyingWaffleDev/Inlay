@@ -7,7 +7,7 @@ public sealed class LineLengthDocumentTests
     [Fact]
     public void EachDocumentKeepsItsOwnLineLengthSettings()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var first = context.ViewModel.SelectedDocument!;
         first.Editor.ShowLineLengthIndicators = true;
         first.Editor.EnforceHardLineLengthLimit = true;

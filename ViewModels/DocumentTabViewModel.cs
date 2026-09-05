@@ -1,12 +1,20 @@
+using System.Threading;
 using Inlay.Models;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 
 namespace Inlay.ViewModels;
 
+internal readonly record struct DocumentFileState(
+    DocumentFileVersion? KnownVersion,
+    bool HasExternalChanges,
+    bool ChangedInAnotherWindow);
+
 internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 {
     private const int UntitledPreviewMaxLength = 24;
+    private static readonly Lock LiveTabsLock = new();
+    private static readonly List<DocumentTabViewModel> LiveTabs = [];
     private readonly Func<DocumentTabViewModel, Task> _closeAsync;
     private readonly int _untitledOrdinal;
     private DocumentFileVersion? _knownFileVersion;
@@ -16,15 +24,40 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         TemplateDocument document,
         Func<DocumentTabViewModel, Task> closeAsync,
         IDocumentFile? file = null,
-        int untitledOrdinal = 1)
+        int untitledOrdinal = 1,
+        Guid? documentId = null,
+        DocumentFileState? fileState = null,
+        bool isDirty = false)
     {
         _closeAsync = closeAsync;
         _untitledOrdinal = untitledOrdinal;
+        DocumentId = documentId ?? Guid.NewGuid();
         File = file;
         Editor.ContentChanged += MarkDirty;
         ApplyDocument(document);
-        RefreshFileVersion();
+        if (fileState is { } state)
+        {
+            _knownFileVersion = state.KnownVersion;
+            HasExternalChanges = state.HasExternalChanges;
+            ChangedInAnotherWindow = state.ChangedInAnotherWindow;
+        }
+        else
+        {
+            RefreshFileVersion();
+        }
+
+        if (isDirty)
+        {
+            MarkDirty();
+        }
+
+        lock (LiveTabsLock)
+        {
+            LiveTabs.Add(this);
+        }
     }
+
+    public Guid DocumentId { get; }
 
     [Reactive(SetModifier = AccessModifier.Private)]
     private string _header = "Untitled";
@@ -33,6 +66,7 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     private bool _isDirty;
 
     private bool _hasExternalChanges;
+    private bool _changedInAnotherWindow;
 
     public TemplateEditorViewModel Editor { get; } = new();
 
@@ -42,7 +76,25 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     public string FileName => File?.Name ?? "Untitled";
 
-    public string ExternalChangesMessage => $"{FileName} changed outside Inlay. Reload it or ignore the changes?";
+    public bool ChangedInAnotherWindow
+    {
+        get => _changedInAnotherWindow;
+        private set
+        {
+            if (_changedInAnotherWindow == value)
+            {
+                return;
+            }
+
+            this.RaiseAndSetIfChanged(ref _changedInAnotherWindow, value);
+            this.RaisePropertyChanged(nameof(ExternalChangesMessage));
+        }
+    }
+
+    public string ExternalChangesMessage =>
+        ChangedInAnotherWindow
+            ? $"{FileName} was changed in another window. Reload it or ignore the changes?"
+            : $"{FileName} changed outside Inlay. Reload it or ignore the changes?";
 
     public bool IsEmptyUntitled() =>
         File is null && !IsDirty && Editor.ExportDocument().Content.Count == 0;
@@ -64,14 +116,18 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     public bool CanEdit => !HasExternalChanges;
 
+    internal DocumentFileState CaptureFileState() =>
+        new(_knownFileVersion, HasExternalChanges, ChangedInAnotherWindow);
+
     public void MarkSaved(IDocumentFile file)
     {
         File = file;
         IsDirty = false;
         HasExternalChanges = false;
+        ChangedInAnotherWindow = false;
         UpdateHeader();
-        this.RaisePropertyChanged(nameof(ExternalChangesMessage));
         RefreshFileVersion();
+        this.RaisePropertyChanged(nameof(ExternalChangesMessage));
     }
 
     public void CheckForExternalChanges()
@@ -90,21 +146,49 @@ internal sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
         _knownFileVersion = version;
         MarkDirty();
+        ChangedInAnotherWindow = WasWrittenByAnotherTab(version.Value);
         HasExternalChanges = true;
     }
 
-    public void IgnoreExternalChanges() => HasExternalChanges = false;
+    public void IgnoreExternalChanges()
+    {
+        HasExternalChanges = false;
+        ChangedInAnotherWindow = false;
+    }
 
     public void Reload(TemplateDocument document)
     {
         ApplyDocument(document);
         HasExternalChanges = false;
+        ChangedInAnotherWindow = false;
         RefreshFileVersion();
     }
 
     public void Dispose()
     {
         Editor.ContentChanged -= MarkDirty;
+        lock (LiveTabsLock)
+        {
+            LiveTabs.Remove(this);
+        }
+    }
+
+    // A version that some other open tab already knows about was written by Inlay itself,
+    // not by an external editor.
+    private bool WasWrittenByAnotherTab(DocumentFileVersion version)
+    {
+        if (File is null)
+        {
+            return false;
+        }
+
+        lock (LiveTabsLock)
+        {
+            return LiveTabs.Exists(other =>
+                !ReferenceEquals(other, this) &&
+                other._knownFileVersion == version &&
+                DocumentFileIdentity.Matches(other.File, File.Identity));
+        }
     }
 
     [ReactiveCommand]

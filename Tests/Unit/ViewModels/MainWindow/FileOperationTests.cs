@@ -7,7 +7,7 @@ public sealed class FileOperationTests
     [Fact]
     public async Task SavePersistsDocumentStateAndClearsDirtyState()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.ViewModel.Editor.ShowLineLengthIndicators = true;
         context.ViewModel.Editor.EnforceHardLineLengthLimit = true;
         context.ViewModel.Editor.SoftLineLengthLimit = 88;
@@ -37,7 +37,7 @@ public sealed class FileOperationTests
     [Fact]
     public async Task OpeningAnOpenFileSelectsItsExistingTab()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var file = new MemoryDocumentFile("opened.itd", "shared-file");
         file.SetDocumentText("Opened once");
         context.Storage.OpenFile = file;
@@ -54,7 +54,7 @@ public sealed class FileOperationTests
     [Fact]
     public async Task OpeningAFileReplacesTheOnlyEmptyUntitledTab()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var emptyTab = context.ViewModel.SelectedDocument;
         var file = new MemoryDocumentFile("opened.itd");
         file.SetDocumentText("Opened content");
@@ -71,7 +71,7 @@ public sealed class FileOperationTests
     [Fact]
     public async Task OpeningAFileKeepsADirtyUntitledTab()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var untitledTab = context.ViewModel.SelectedDocument!;
         untitledTab.Editor.ReportContentChanged();
         var file = new MemoryDocumentFile("opened.itd");
