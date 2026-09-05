@@ -8,6 +8,7 @@
         x:DataType="vm:MainWindowViewModel"
         Width="980" Height="680"
         MinWidth="680" MinHeight="440"
+        WindowStartupLocation="CenterScreen"
         Background="{DynamicResource InlayShellBackgroundBrush}"
         Title="{Binding Title}">
   <Window.KeyBindings>
