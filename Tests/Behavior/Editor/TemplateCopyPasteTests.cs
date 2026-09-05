@@ -667,7 +667,7 @@ public sealed class TemplateCopyPasteTests
         await editor.PasteAsync();
 
         Assert.DoesNotContain("\t", editor.Text, StringComparison.Ordinal);
-        Assert.Equal("    Hello\n    World", editor.Text);
+        Assert.Equal($"    Hello{Environment.NewLine}    World", editor.Text);
     }
 
     private sealed class EditorTestHost : IDisposable
