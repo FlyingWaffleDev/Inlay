@@ -24,6 +24,7 @@ internal sealed class App(IServiceProvider services) : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            EmbeddedAssets.WarmUp();
             desktop.MainWindow = services.GetRequiredService<MainWindowFactory>().Create();
             SystemMonospaceFonts.WarmUp();
         }

@@ -8,7 +8,7 @@ public sealed class DocumentClosingTests
     [Fact]
     public async Task ClosingDirtyTabHonorsCancelChoice()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var tab = context.ViewModel.SelectedDocument!;
         tab.Editor.ReportContentChanged();
         context.Interaction.UnsavedChoice = UnsavedChoice.Cancel;
@@ -23,7 +23,7 @@ public sealed class DocumentClosingTests
     [Fact]
     public async Task ClosingOnlyTabThroughTabCommandSelectsReplacementFirst()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var original = context.ViewModel.SelectedDocument!;
 
         await MainWindowViewModelTestContext.ObserveAsync(
@@ -47,7 +47,7 @@ public sealed class DocumentClosingTests
     [InlineData(1, true)]
     public async Task CloseHonorsUnsavedChoice(int choiceValue, bool expected)
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.ViewModel.Editor!.ReportContentChanged();
         context.Interaction.UnsavedChoice = (UnsavedChoice)choiceValue;
 
@@ -57,7 +57,7 @@ public sealed class DocumentClosingTests
     [Fact]
     public async Task SaveFailurePreventsClosingADirtyDocument()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var document = context.ViewModel.SelectedDocument!;
         document.Editor.ReportContentChanged();
         context.Interaction.UnsavedChoice = UnsavedChoice.Save;
@@ -74,7 +74,7 @@ public sealed class DocumentClosingTests
     [Fact]
     public async Task SuccessfulSaveAllowsClosingADirtyDocument()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var document = context.ViewModel.SelectedDocument!;
         document.Editor.ReportContentChanged();
         context.Interaction.UnsavedChoice = UnsavedChoice.Save;
@@ -91,7 +91,7 @@ public sealed class DocumentClosingTests
     [Fact]
     public async Task ClosingMultipleDirtyDocumentsStopsAtCancel()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.ViewModel.SelectedDocument!.Editor.ReportContentChanged();
         context.ViewModel.AddNewDocument();
         var second = context.ViewModel.SelectedDocument!;

@@ -7,7 +7,7 @@ using ReactiveUI.SourceGenerators;
 
 namespace Inlay.ViewModels;
 
-internal sealed partial class MainWindowViewModel : ReactiveObject
+internal sealed partial class MainWindowViewModel : ReactiveObject, IDisposable
 {
     private const double DefaultEditorFontSize = 15;
     private static readonly FontFamily DefaultEditorFontFamily =
@@ -80,6 +80,98 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
 
     public void AddNewDocument() => AddDocument(new TemplateDocument());
 
+    public void ReorderDocument(DocumentTabViewModel document, int targetSlot)
+    {
+        var sourceIndex = Documents.IndexOf(document);
+        if (sourceIndex < 0)
+        {
+            return;
+        }
+
+        // A slot is a gap between tabs, so a slot to the right of the tab being
+        // moved lands one index earlier once the tab leaves its current place.
+        var newIndex = Math.Clamp(
+            targetSlot > sourceIndex ? targetSlot - 1 : targetSlot,
+            0,
+            Documents.Count - 1);
+        if (newIndex != sourceIndex)
+        {
+            Documents.Move(sourceIndex, newIndex);
+        }
+
+        SelectedDocument = document;
+    }
+
+    public bool ContainsDocument(DocumentTabViewModel document) =>
+        FindMatchingDocument(document.DocumentId, document.File) is not null;
+
+    public DocumentTabViewModel CopyDocument(
+        TemplateDocument document,
+        IDocumentFile? file,
+        bool isDirty,
+        int targetIndex = -1,
+        Guid? documentId = null,
+        DocumentFileState? fileState = null)
+    {
+        var targetDocId = documentId ?? Guid.NewGuid();
+        var existingDocument = FindMatchingDocument(targetDocId, file);
+        if (existingDocument is not null)
+        {
+            SelectedDocument = existingDocument;
+            existingDocument.CheckForExternalChanges();
+            return existingDocument;
+        }
+
+        var shouldReplacePristineUntitled = Documents.Count == 1 && Documents[0].IsEmptyUntitled();
+        var untitledOrdinal = file is null && !shouldReplacePristineUntitled
+            ? NextUntitledOrdinal()
+            : 1;
+
+        var tab = new DocumentTabViewModel(
+            document,
+            CloseDocumentAsync,
+            file,
+            untitledOrdinal,
+            targetDocId,
+            fileState,
+            isDirty);
+        if (fileState is not null)
+        {
+            tab.CheckForExternalChanges();
+        }
+
+        tab.PropertyChanged += OnDocumentPropertyChanged;
+
+        if (shouldReplacePristineUntitled)
+        {
+            var oldTab = Documents[0];
+            Documents[0] = tab;
+            oldTab.PropertyChanged -= OnDocumentPropertyChanged;
+            oldTab.Dispose();
+        }
+        else if (targetIndex >= 0 && targetIndex <= Documents.Count)
+        {
+            Documents.Insert(targetIndex, tab);
+        }
+        else
+        {
+            Documents.Add(tab);
+        }
+
+        SelectedDocument = tab;
+        NotifyDocumentStateChanged();
+        return tab;
+    }
+
+    public DocumentTabViewModel CopyDocument(DocumentTabViewModel sourceTab, int targetIndex = -1) =>
+        CopyDocument(
+            sourceTab.Editor.ExportDocument(),
+            sourceTab.File,
+            sourceTab.IsDirty,
+            targetIndex,
+            sourceTab.DocumentId,
+            sourceTab.CaptureFileState());
+
     public void AdjustEditorZoom(int steps)
     {
         EditorFontSize = Math.Clamp(
@@ -135,6 +227,15 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
         }
 
         return true;
+    }
+
+    public void Dispose()
+    {
+        foreach (var document in Documents)
+        {
+            document.PropertyChanged -= OnDocumentPropertyChanged;
+            document.Dispose();
+        }
     }
 
     [ReactiveCommand]
@@ -311,14 +412,8 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
         IDocumentFile? file = null,
         bool resetUntitledOrdinal = false)
     {
-        var untitledOrdinal = file is null
-            ? resetUntitledOrdinal
-                ? 1
-                : Documents
-                    .Where(documentTab => documentTab.File is null)
-                    .Select(documentTab => documentTab.UntitledOrdinal)
-                    .DefaultIfEmpty(0)
-                    .Max() + 1
+        var untitledOrdinal = file is null && !resetUntitledOrdinal
+            ? NextUntitledOrdinal()
             : 1;
         var tab = new DocumentTabViewModel(
             document,
@@ -336,7 +431,11 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
         TemplateDocument document,
         IDocumentFile file)
     {
-        var replacement = new DocumentTabViewModel(document, CloseDocumentAsync, file);
+        var replacement = new DocumentTabViewModel(
+            document,
+            CloseDocumentAsync,
+            file,
+            documentId: existingTab.DocumentId);
         replacement.PropertyChanged += OnDocumentPropertyChanged;
 
         var index = Documents.IndexOf(existingTab);
@@ -395,8 +494,19 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
     }
 
     private DocumentTabViewModel? FindOpenDocument(string identity) =>
+        Documents.FirstOrDefault(document => DocumentFileIdentity.Matches(document.File, identity));
+
+    private DocumentTabViewModel? FindMatchingDocument(Guid documentId, IDocumentFile? file) =>
         Documents.FirstOrDefault(document =>
-            document.File is not null && FileIdentityComparer.Equals(document.File.Identity, identity));
+            document.DocumentId == documentId ||
+            (file is not null && DocumentFileIdentity.Matches(document.File, file.Identity)));
+
+    private int NextUntitledOrdinal() =>
+        Documents
+            .Where(document => document.File is null)
+            .Select(document => document.UntitledOrdinal)
+            .DefaultIfEmpty(0)
+            .Max() + 1;
 
     private void OnDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -417,8 +527,5 @@ internal sealed partial class MainWindowViewModel : ReactiveObject
         var name = SelectedDocument?.Header ?? "Inlay";
         Title = $"{name} - Inlay";
     }
-
-    private static StringComparer FileIdentityComparer { get; } =
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
 }

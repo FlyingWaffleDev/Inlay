@@ -71,9 +71,12 @@ internal sealed class CaptureApp(
             return;
         }
 
+        // The window owns the view model and disposes it when it closes.
+#pragma warning disable CA2000
         var viewModel = new MainWindowViewModel(
             new NullDocumentService(), new NullStorageService(), new NullInteractionService(),
             new NullApplicationService());
+#pragma warning restore CA2000
         var exampleFile = new ExampleFile(examplePath);
         viewModel.SelectedDocument!.Editor.LoadDocument(exampleDocument);
         viewModel.SelectedDocument!.MarkSaved(exampleFile);

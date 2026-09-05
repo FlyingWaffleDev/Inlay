@@ -7,7 +7,7 @@ public sealed class ApplicationCommandTests
     [Fact]
     public void CommandsReachTheApplicationService()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
 
         TestCommand.Execute(context.ViewModel.NewWindowCommand.Execute());
         TestCommand.Execute(context.ViewModel.ExitCommand.Execute());
@@ -19,7 +19,7 @@ public sealed class ApplicationCommandTests
     [Fact]
     public async Task CancellingFontDialogKeepsTheCurrentFont()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         var initialFont = context.ViewModel.EditorFontFamily;
 
         await MainWindowViewModelTestContext.ObserveAsync(

@@ -8,7 +8,7 @@ public sealed class DocumentStateTests
     [Fact]
     public void EditingUpdatesDirtyStateTitleAndTabHeader()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
 
         context.ViewModel.Editor!.ReportContentChanged();
 
@@ -20,7 +20,7 @@ public sealed class DocumentStateTests
     [Fact]
     public void UnsavedTabHeaderUsesAndUpdatesATruncatedFirstLine()
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
         context.Editor.Document = new TemplateDocument
         {
             Content = [DocumentPart.PlainText("  123456789012345678901234567890\nSecond line")]
@@ -46,7 +46,7 @@ public sealed class DocumentStateTests
     [InlineData(100, 40)]
     public void ZoomStopsAtItsLimits(int steps, double expectedSize)
     {
-        var context = MainWindowViewModelTestContext.Create();
+        using var context = MainWindowViewModelTestContext.Create();
 
         context.ViewModel.AdjustEditorZoom(steps);
 
