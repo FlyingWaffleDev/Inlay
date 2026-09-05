@@ -29,11 +29,6 @@ internal sealed class JsonTemplateDocumentService : ITemplateDocumentService
                 $"Document format version {document.FormatVersion} is not supported.");
         }
 
-        if (document.Content is null)
-        {
-            throw new InvalidDataException("The document is missing its content collection.");
-        }
-
         if (document.LineLength is null)
         {
             throw new InvalidDataException("The document has null line length settings.");
@@ -57,32 +52,10 @@ internal sealed class JsonTemplateDocumentService : ITemplateDocumentService
                 $"The hard line length limit cannot exceed {LineLengthSettings.MaximumLimit}.");
         }
 
-        foreach (var part in document.Content)
+        var contentError = DocumentPartValidation.FindError(document.Content);
+        if (contentError is not null)
         {
-            if (!Enum.IsDefined(part.Type))
-            {
-                throw new InvalidDataException("A document part has an invalid type.");
-            }
-
-            if (part.Type == DocumentPartKind.Text && part.Text is null)
-            {
-                throw new InvalidDataException("A text part is missing its text value.");
-            }
-
-            if (part.Type == DocumentPartKind.Template)
-            {
-                var count = part.Options?.Count ?? 0;
-                var selectedIndex = part.SelectedIndex ?? -1;
-                if (selectedIndex < -1 || selectedIndex >= count)
-                {
-                    throw new InvalidDataException("A template has an invalid selectedIndex value.");
-                }
-
-                if (part.Options?.Exists(string.IsNullOrEmpty) == true)
-                {
-                    throw new InvalidDataException("A template choice cannot be empty.");
-                }
-            }
+            throw new InvalidDataException(contentError);
         }
 
         return document;

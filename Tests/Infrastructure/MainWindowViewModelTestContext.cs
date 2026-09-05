@@ -68,7 +68,7 @@ internal sealed class FakeEditorAdapter : ITemplateEditorAdapter
     public int ReplaceCount { get; private set; }
 
     public TemplateDocument ExportDocument() => Document;
-    
+
     public ITemplateEditorSession CaptureSession() =>
         new SerializedTemplateEditorSession(Document);
 
@@ -84,9 +84,24 @@ internal sealed class FakeEditorAdapter : ITemplateEditorAdapter
     public void InsertTemplate() => InsertCount++;
     public void Undo() => UndoCount++;
     public void Redo() => RedoCount++;
-    public void Cut() => CutCount++;
-    public void Copy() => CopyCount++;
-    public void Paste() => PasteCount++;
+    public Task<bool> CutAsync()
+    {
+        CutCount++;
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> CopyAsync()
+    {
+        CopyCount++;
+        return Task.FromResult(true);
+    }
+
+    public Task PasteAsync()
+    {
+        PasteCount++;
+        return Task.CompletedTask;
+    }
+
     public void Delete() => DeleteCount++;
     public void SelectAll() => SelectAllCount++;
     public void Find() => FindCount++;
