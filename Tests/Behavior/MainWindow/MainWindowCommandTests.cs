@@ -268,7 +268,7 @@ public sealed class MainWindowCommandTests
     }
 
     [AvaloniaFact]
-    public void ExternalChangesDisableTheEditingFunctionality()
+    public async Task ExternalChangesDisableTheEditingFunctionality()
     {
         var file = new MemoryDocumentFile("opened.itd");
         file.SetDocumentText("Original");
@@ -276,7 +276,9 @@ public sealed class MainWindowCommandTests
         var (window, viewModel) = MainWindowTestHost.CreateWindow(storage);
         try
         {
-            TestCommand.Execute(viewModel.OpenCommand.Execute());
+            await TestCommand.ExecuteAsync(
+                viewModel.OpenCommand.Execute(),
+                TestContext.Current.CancellationToken);
             Dispatcher.UIThread.RunJobs();
             window.UpdateLayout();
 

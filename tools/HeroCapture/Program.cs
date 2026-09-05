@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -13,33 +14,26 @@ using AvaloniaEdit.Rendering;
 using Inlay;
 using Inlay.Models;
 using Inlay.ViewModels;
+using ReactiveUI.Avalonia;
 
 var theme = args.FirstOrDefault()?.Equals("dark", StringComparison.OrdinalIgnoreCase) == true
     ? ThemeVariant.Dark
     : ThemeVariant.Light;
 var examplePath = Path.Combine(AppContext.BaseDirectory, "product-launch.itd");
-var exampleDocument = LoadExampleDocument(examplePath);
+var exampleDocument = await LoadExampleDocumentAsync(examplePath).ConfigureAwait(false);
 
 Build().StartWithClassicDesktopLifetime(args);
 
 AppBuilder Build() => AppBuilder
     .Configure(() => new CaptureApp(theme, examplePath, exampleDocument))
-    .UsePlatformDetect();
+    .UsePlatformDetect()
+    .UseReactiveUI(_ => { });
 
-#pragma warning disable CA2025 // GetResult completes the read before the stream is disposed.
-static TemplateDocument LoadExampleDocument(string path)
+static async Task<TemplateDocument> LoadExampleDocumentAsync(string path)
 {
-    var stream = File.OpenRead(path);
-    try
-    {
-        return new JsonTemplateDocumentService().LoadAsync(stream).GetAwaiter().GetResult();
-    }
-    finally
-    {
-        stream.Dispose();
-    }
+    using var stream = File.OpenRead(path);
+    return await new JsonTemplateDocumentService().LoadAsync(stream).ConfigureAwait(false);
 }
-#pragma warning restore CA2025
 
 internal sealed class CaptureApp(
     ThemeVariant theme,
@@ -64,6 +58,8 @@ internal sealed class CaptureApp(
         });
     }
 
+    [SuppressMessage("Reliability", "CA2000",
+        Justification = "The window owns the view model and disposes it when it closes.")]
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
@@ -71,12 +67,9 @@ internal sealed class CaptureApp(
             return;
         }
 
-        // The window owns the view model and disposes it when it closes.
-#pragma warning disable CA2000
         var viewModel = new MainWindowViewModel(
             new NullDocumentService(), new NullStorageService(), new NullInteractionService(),
             new NullApplicationService());
-#pragma warning restore CA2000
         var exampleFile = new ExampleFile(examplePath);
         viewModel.SelectedDocument!.Editor.LoadDocument(exampleDocument);
         viewModel.SelectedDocument!.MarkSaved(exampleFile);
