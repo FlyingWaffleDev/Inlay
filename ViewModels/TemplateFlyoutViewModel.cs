@@ -10,7 +10,9 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
     private readonly Action<string> _selectOption;
     private readonly Action _removeTemplate;
     private string? _selectedChoice;
+    private (bool HasChoice, string? Choice) _heldSelection;
     private bool _isDisconnected;
+    private bool _isHoldingSelection;
 
     [Reactive(nameof(CanAddChoice))]
     private string _newChoice = string.Empty;
@@ -39,6 +41,12 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
         get => _selectedChoice;
         set
         {
+            if (_isHoldingSelection)
+            {
+                _heldSelection = (true, value);
+                return;
+            }
+
             if (_selectedChoice == value)
             {
                 return;
@@ -69,6 +77,28 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
 
         this.RaiseAndSetIfChanged(ref _selectedChoice, selectedChoice, nameof(SelectedChoice));
         this.RaisePropertyChanged(nameof(SelectedIndex));
+    }
+
+    internal void BeginSelectionHold()
+    {
+        _isHoldingSelection = true;
+        _heldSelection = default;
+    }
+
+    internal void EndSelectionHold(bool applyHeldChoice)
+    {
+        if (!_isHoldingSelection)
+        {
+            return;
+        }
+
+        var (HasChoice, Choice) = _heldSelection;
+        _isHoldingSelection = false;
+        _heldSelection = default;
+        if (applyHeldChoice && HasChoice)
+        {
+            SelectedChoice = Choice;
+        }
     }
 
     internal void SynchronizeOptions()
@@ -113,8 +143,39 @@ internal sealed partial class TemplateFlyoutViewModel : ReactiveObject
         Options.RemoveAt(removedIndex);
     }
 
+    public void ReorderChoice(string choice, int targetSlot)
+    {
+        var sourceIndex = Options.IndexOf(choice);
+        if (sourceIndex < 0)
+        {
+            return;
+        }
+
+        var newIndex = DragReorder.SlotToIndex(targetSlot, sourceIndex, Options.Count);
+        if (newIndex != sourceIndex)
+        {
+            HoldSelection(() => Options.Move(sourceIndex, newIndex));
+        }
+    }
+
     [ReactiveCommand]
     private void RemoveTemplate() => _removeTemplate();
+
+    private void HoldSelection(Action action)
+    {
+        var wasHoldingSelection = _isHoldingSelection;
+        var heldSelection = _heldSelection;
+        _isHoldingSelection = true;
+        try
+        {
+            action();
+        }
+        finally
+        {
+            _isHoldingSelection = wasHoldingSelection;
+            _heldSelection = heldSelection;
+        }
+    }
 
     private void OnOptionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {

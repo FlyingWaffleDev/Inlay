@@ -27,14 +27,13 @@ public sealed class TemplateFlyoutLayoutAppearanceTests
     public void OptionsListTracksWhetherChoicesExist()
     {
         var (template, content) = CreateTemplate([], -1);
-        var panel = Assert.IsType<StackPanel>(content);
-        var listBox = panel.Children.OfType<ListBox>().Single();
+        var listHost = content.FindControl<Panel>("OptionsListHost")!;
 
-        Assert.False(listBox.IsVisible);
+        Assert.False(listHost.IsVisible);
 
         template.Options.Add("Choice");
 
-        Assert.True(listBox.IsVisible);
+        Assert.True(listHost.IsVisible);
     }
 
     [AvaloniaFact]

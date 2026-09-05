@@ -161,6 +161,23 @@ public sealed class TemplateTextElementGeneratorTests
         AssertTemplateState(editor, generator, viewModel, ["Two", "Three"], 1);
     }
 
+    [AvaloniaFact]
+    public void ReorderingTheSelectedChoiceIsUndoable()
+    {
+        var (editor, generator, viewModel) = CreateTemplate(
+            ["One", "Two", "Three"],
+            0);
+
+        viewModel.ReorderChoice("One", 3);
+        AssertTemplateState(editor, generator, viewModel, ["Two", "Three", "One"], 2);
+
+        editor.Undo();
+        AssertTemplateState(editor, generator, viewModel, ["One", "Two", "Three"], 0);
+
+        editor.Redo();
+        AssertTemplateState(editor, generator, viewModel, ["Two", "Three", "One"], 2);
+    }
+
     [AvaloniaTheory]
     [InlineData(1)]
     [InlineData(2)]

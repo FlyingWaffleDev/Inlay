@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -15,13 +16,9 @@ internal sealed partial class MainWindow : Window
 {
     private const double TabScrollStep = 96;
     private const double TabWheelScrollStep = 64;
-    private const double DragThreshold = 6;
+    private readonly DragCandidate<DocumentTabViewModel, TabStripItem> _dragCandidate = new();
     private bool _closeApproved;
     private bool _closePromptOpen;
-    private DocumentTabViewModel? _dragCandidate;
-    private TabStripItem? _dragCandidateItem;
-    private PointerPressedEventArgs? _dragTrigger;
-    private Point _dragStartPoint;
 
     internal MainWindowViewModel? ViewModel => DataContext as MainWindowViewModel;
 
@@ -222,48 +219,29 @@ internal sealed partial class MainWindow : Window
             return;
         }
 
-        if (!properties.IsLeftButtonPressed || IsCloseButton(e.Source))
+        if (!properties.IsLeftButtonPressed ||
+            DragReorder.IsInButton(e.Source, "tab-close"))
         {
             return;
         }
 
-        if (FindTabItem(e.Source) is { DataContext: DocumentTabViewModel tab } tabItem)
+        if (DragReorder.FindContainer<TabStripItem>(e.Source) is
+            { DataContext: DocumentTabViewModel tab } tabItem)
         {
-            _dragCandidate = tab;
-            _dragCandidateItem = tabItem;
-            _dragTrigger = e;
-            _dragStartPoint = e.GetPosition(this);
+            _dragCandidate.Arm(tab, tabItem, e, e.GetPosition(this));
         }
     }
 
     private void OnWindowPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_dragCandidate is not { } tab ||
-            _dragCandidateItem is not { } tabItem ||
-            _dragTrigger is not { } trigger)
+        if (_dragCandidate.TryStart(e.GetPosition(this)) is { } candidate)
         {
-            return;
+            _ = StartTabDragAsync(candidate.Trigger, candidate.Item, candidate.Container);
         }
-
-        var delta = e.GetPosition(this) - _dragStartPoint;
-        if (Math.Abs(delta.X) < DragThreshold && Math.Abs(delta.Y) < DragThreshold)
-        {
-            return;
-        }
-
-        ClearDragCandidate();
-        _ = StartTabDragAsync(trigger, tab, tabItem);
     }
 
     private void OnWindowPointerReleased(object? sender, PointerReleasedEventArgs e) =>
-        ClearDragCandidate();
-
-    private void ClearDragCandidate()
-    {
-        _dragCandidate = null;
-        _dragCandidateItem = null;
-        _dragTrigger = null;
-    }
+        _dragCandidate.Clear();
 
     private async Task StartTabDragAsync(
         PointerPressedEventArgs trigger,
@@ -381,45 +359,24 @@ internal sealed partial class MainWindow : Window
         ViewModel is { } viewModel &&
         (payload.SourceWindow == this || !viewModel.ContainsDocument(payload.SourceTab));
 
-    private static bool IsCloseButton(object? source) =>
-        source is Visual visual &&
-        (visual as Button ?? visual.FindAncestorOfType<Button>()) is { } button &&
-        button.Classes.Contains("tab-close");
-
-    private static TabStripItem? FindTabItem(object? source) =>
-        source is Visual visual
-            ? visual as TabStripItem ?? visual.FindAncestorOfType<TabStripItem>()
-            : null;
-
-    // Returns the gap the pointer sits in: 0 is before the first tab, Count is after the last.
-    private int CalculateTabDropIndex(Point pointInTabs)
-    {
-        var count = ViewModel?.Documents.Count ?? 0;
-        for (var index = 0; index < count; index++)
-        {
-            if (DocumentTabs.ContainerFromIndex(index) is Control container &&
-                container.TranslatePoint(new Point(0, 0), DocumentTabs) is { } origin &&
-                pointInTabs.X < origin.X + container.Bounds.Width / 2)
-            {
-                return index;
-            }
-        }
-
-        return count;
-    }
+    private int CalculateTabDropIndex(Point pointInTabs) => DragReorder.DropSlot(
+        DocumentTabs,
+        ViewModel?.Documents.Count ?? 0,
+        pointInTabs,
+        Orientation.Horizontal);
 
     private void ShowDropIndicator(int slot)
     {
-        var count = ViewModel?.Documents.Count ?? 0;
-        var isTrailingSlot = slot >= count;
-        if (DocumentTabs.ContainerFromIndex(isTrailingSlot ? count - 1 : slot) is not Control container ||
-            container.TranslatePoint(new Point(0, 0), DocumentTabs) is not { } origin)
+        if (DragReorder.SlotOffset(
+                DocumentTabs,
+                ViewModel?.Documents.Count ?? 0,
+                slot,
+                Orientation.Horizontal) is not { } x)
         {
             HideDropIndicator();
             return;
         }
 
-        var x = isTrailingSlot ? origin.X + container.Bounds.Width : origin.X;
         TabDropIndicator.Margin = new Thickness(Math.Max(0, x - 1), 0, 0, 0);
         TabDropIndicator.IsVisible = true;
     }

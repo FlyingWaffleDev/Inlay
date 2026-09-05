@@ -251,6 +251,15 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
             return;
         }
 
+        if (e.Action == NotifyCollectionChangedAction.Move &&
+            e.OldStartingIndex >= 0 &&
+            e.NewStartingIndex >= 0 &&
+            e.OldItems?.Count == 1)
+        {
+            RecordOptionMove(info, e.OldStartingIndex, e.NewStartingIndex);
+            return;
+        }
+
         if (info.SelectedIndex >= info.Options.Count)
         {
             SelectByMetadata(info, TemplateTextElement.PlaceholderText, -1);
@@ -317,6 +326,57 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
 
         ClampCaretOffset();
         NotifyChanged();
+    }
+
+    private void RecordOptionMove(TemplateInfo info, int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex)
+        {
+            return;
+        }
+
+        var oldSelectedIndex = info.SelectedIndex;
+        var newSelectedIndex = IndexAfterMove(oldSelectedIndex, oldIndex, newIndex);
+
+        RunUndoGroup(() =>
+        {
+            _editor.Document.UndoStack.Push(new TemplateOptionMoveOperation(
+                this,
+                info,
+                oldIndex,
+                newIndex,
+                info.SelectedText,
+                oldSelectedIndex,
+                newSelectedIndex));
+            ApplySelectionMetadata(info, info.SelectedText, newSelectedIndex);
+        });
+
+        NotifyChanged();
+    }
+
+    private static int IndexAfterMove(int index, int oldIndex, int newIndex)
+    {
+        if (index < 0)
+        {
+            return index;
+        }
+
+        if (index == oldIndex)
+        {
+            return newIndex;
+        }
+
+        if (oldIndex < newIndex && index > oldIndex && index <= newIndex)
+        {
+            return index - 1;
+        }
+
+        if (oldIndex > newIndex && index >= newIndex && index < oldIndex)
+        {
+            return index + 1;
+        }
+
+        return index;
     }
 
     private void SelectByMetadata(TemplateInfo info, string text, int selectedIndex)
@@ -797,6 +857,50 @@ internal sealed class TemplateTextElementGenerator : VisualLineElementGenerator
                 if (currentIndex >= 0)
                 {
                     template.Options.RemoveAt(currentIndex);
+                }
+            });
+        }
+    }
+
+    private sealed class TemplateOptionMoveOperation(
+        TemplateTextElementGenerator generator,
+        TemplateInfo template,
+        int oldIndex,
+        int newIndex,
+        string selectedText,
+        int oldSelectedIndex,
+        int newSelectedIndex) : IUndoableOperation
+    {
+        public void Undo()
+        {
+            ReplayMove(newIndex, oldIndex);
+            generator.ApplySelectionMetadata(
+                template,
+                selectedText,
+                oldSelectedIndex);
+            generator.ClampCaretOffset();
+            generator.TemplatesChanged?.Invoke();
+        }
+
+        public void Redo()
+        {
+            ReplayMove(oldIndex, newIndex);
+            generator.ApplySelectionMetadata(
+                template,
+                selectedText,
+                newSelectedIndex);
+            generator.ClampCaretOffset();
+            generator.TemplatesChanged?.Invoke();
+        }
+
+        private void ReplayMove(int sourceIndex, int targetIndex)
+        {
+            generator.ReplayOptionChange(() =>
+            {
+                if (sourceIndex >= 0 && sourceIndex < template.Options.Count &&
+                    targetIndex >= 0 && targetIndex < template.Options.Count)
+                {
+                    template.Options.Move(sourceIndex, targetIndex);
                 }
             });
         }

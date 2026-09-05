@@ -52,6 +52,37 @@ public sealed class TemplateFlyoutViewModelTests
     }
 
     [Fact]
+    public void ReorderingAChoiceUsesDropSlotsAndKeepsTheSelectedChoice()
+    {
+        var selected = string.Empty;
+        var options = new ObservableCollection<string>(["One", "Two", "Three"]);
+        var viewModel = new TemplateFlyoutViewModel(
+            options,
+            1,
+            value => selected = value,
+            () => { });
+
+        viewModel.ReorderChoice("One", 3);
+
+        Assert.Equal(["Two", "Three", "One"], options);
+        Assert.Equal("Two", viewModel.SelectedChoice);
+        Assert.Equal(0, viewModel.SelectedIndex);
+        Assert.Equal("Two", selected);
+    }
+
+    [Fact]
+    public void ReorderingToAnAdjacentSlotLeavesTheOrderAlone()
+    {
+        var options = new ObservableCollection<string>(["One", "Two", "Three"]);
+        var viewModel = new TemplateFlyoutViewModel(options, 1, _ => { }, () => { });
+
+        viewModel.ReorderChoice("Two", 2);
+
+        Assert.Equal(["One", "Two", "Three"], options);
+        Assert.Equal("Two", viewModel.SelectedChoice);
+    }
+
+    [Fact]
     public void RemoveTemplateCommandInvokesTheRemovalCallback()
     {
         var removeCount = 0;
