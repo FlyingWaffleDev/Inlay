@@ -27,7 +27,7 @@
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3"
                       Condition="'$(Configuration)' == 'Debug'"
                       PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageReference Include="ReactiveUI" Version="24.1.0" />
     <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.1" />
     <PackageReference Include="ReactiveUI.SourceGenerators" Version="3.2.0" PrivateAssets="all" />
